@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  # ---------- Authorization Service ----------
+  auth-service:
+    build:
+      context: ../reforma_authorization
+      dockerfile: Dockerfile
+    container_name: reforma_authorization
+    restart: always
+    env_file:
+      - ../reforma_authorization/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - backend
+
+  # ---------- PostgreSQL ----------
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 0244
+      POSTGRES_DB: reforma_authorization_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  # ---------- RabbitMQ ----------
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - backend
+
+volumes:
+  pgdata:
+
+networks:
+  backend:
+    driver: bridge
