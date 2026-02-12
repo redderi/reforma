@@ -1,6 +1,9 @@
 import asyncio
 import json
 from reforma_authorization.infrastructure.rabbitmq.connection import RabbitMQConnection
+from reforma_authorization.infrastructure.config.rabbitmq_config import MAIL_EXCHANGE
+from reforma_authorization.common.logger import log_info, log_error
+import aio_pika
 
 class MailPublisher:
     _instance = None
@@ -17,10 +20,25 @@ class MailPublisher:
             await self.rabbit.connect()
             self._connected = True
 
-    async def publish(self, message: dict, routing_key: str = "mail_queue"):
+    async def send_event(self, event_type: str, payload: dict):
+
+        message = {
+            "type": event_type,
+            "payload": payload
+        }
+        await self.publish(message, routing_key=event_type)
+
+    async def publish(self, message: dict, routing_key: str):
         if not self._connected:
             await self.connect()
-        await self.rabbit.publish("mail_exchange", routing_key, message)
+        try:
+            log_info(f"[Publisher] Trying to send to {MAIL_EXCHANGE} rk={routing_key}")
+            await self.rabbit.publish(MAIL_EXCHANGE, routing_key, message)
+            log_info("[Publisher] Message sent successfully")
+        except aio_pika.exceptions.ChannelLockedResource as e:
+            log_error(f"[Publisher] Blocked by RabbitMQ alarm/resource limit: {e}")
+        except Exception as e:
+            log_error(f"[Publisher] Publish failed: {e}", exc_info=True)
 
     async def close(self):
         if self._connected:

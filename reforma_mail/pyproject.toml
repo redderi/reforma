@@ -6,8 +6,18 @@ readme = "README.md"
 authors = [
     { name = "redderi", email = "vrudko22@gmail.com" }
 ]
-requires-python = ">=3.12"
-dependencies = []
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "aio-pika>=9.5.8",
+    "aiohttp>=3.13.3",
+    "elasticsearch>=9.3.0",
+    "fastapi[standart]>=0.128.0",
+    "jinja2>=3.1.6",
+    "logstash-formatter>=0.5.17",
+    "python-dotenv>=1.2.1",
+    "structlog>=25.5.0",
+    "uvicorn>=0.40.0",
+]
 
 [project.scripts]
 reforma-mail = "reforma_mail:main"

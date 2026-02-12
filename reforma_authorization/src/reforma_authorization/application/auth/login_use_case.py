@@ -22,8 +22,10 @@ class LoginUseCase:
     def execute(self, email: str, password: str, device_id: str) -> dict:
         user = self.user_repo.get_by_email(email)
 
-        if not user or not self.hasher.verify(password, user.password_hash):
-            raise ValueError("Invalid credentials")
+        if not user:
+            raise ValueError("Invalid user")
+        if not self.hasher.verify(password, user.password_hash):
+            raise ValueError("Invalid password")
         
         if not getattr(user, "is_email_verified", False):
             raise ValueError("Email not verified. Please confirm your email before logging in.")

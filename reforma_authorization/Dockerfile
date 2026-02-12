@@ -1,22 +1,36 @@
 FROM python:3.12-slim
 
-WORKDIR /reforma_authorization
+WORKDIR /app
 
+# Устанавливаем необходимые пакеты и dockerize
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
+    curl \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml poetry.lock* /reforma_authorization/
+# Устанавливаем dockerize
+ENV DOCKERIZE_VERSION=v0.7.0
+RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
-RUN pip install --no-cache-dir "poetry>=1.6.0"
+# Копируем приложение
+COPY reforma_authorization /app/reforma_authorization
 
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-root --no-interaction --no-ansi
+# Устанавливаем зависимости
+RUN pip install --no-cache-dir -r /app/reforma_authorization/requirements.txt
 
-COPY . /reforma_authorization
-
+# Настройки Python
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app/reforma_authorization/src
+EXPOSE 8000
 
-CMD ["uvicorn", "src.reforma_authorization.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Копируем entrypoint
+COPY reforma_authorization/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Запуск через entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -2,10 +2,10 @@ version: "3.9"
 
 services:
   # ---------- Authorization Service ----------
-  auth-service:
+  auth_service:
     build:
-      context: ../reforma_authorization
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: reforma_authorization/Dockerfile
     container_name: reforma_authorization
     restart: always
     env_file:
@@ -15,6 +15,24 @@ services:
     depends_on:
       - postgres
       - rabbitmq
+      - logstash
+    networks:
+      - backend
+
+  # ---------- Mail Service ----------
+  mail_service:
+    build:
+      context: ..
+      dockerfile: reforma_mail/Dockerfile
+    container_name: reforma_mail
+    restart: always
+    env_file:
+      - ../reforma_mail/.env
+    ports:
+      - "8001:8000"
+    depends_on:
+      - rabbitmq
+      - logstash
     networks:
       - backend
 
@@ -24,8 +42,8 @@ services:
     container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 0244
+      POSTGRES_USER: reforma_user
+      POSTGRES_PASSWORD: reforma_pass
       POSTGRES_DB: reforma_authorization_db
     ports:
       - "5432:5432"
@@ -33,23 +51,111 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reforma_user -d reforma_authorization_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
-  # ---------- RabbitMQ ----------
+# ---------- RabbitMQ ----------
   rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    restart: always
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+      image: rabbitmq:3-management   
+      container_name: rabbitmq
+      restart: always
+      ports:
+        - "5672:5672"
+        - "15672:15672"
+      environment:
+        RABBITMQ_DEFAULT_USER: guest
+        RABBITMQ_DEFAULT_PASS: guest
+      networks:
+        - backend
+      healthcheck:
+        test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        start_period: 30s
+      volumes:
+        # Монтируем конфиг (создай файл локально!)
+        - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+        - rabbitmq_data:/var/lib/rabbitmq
+        - rabbitmq_log:/var/log/rabbitmq
+      mem_limit: 4g          
+      mem_reservation: 1g
+
+  # ---------- Elasticsearch ----------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    container_name: elasticsearch
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - xpack.security.http.ssl.enabled=false
+    ports:
+      - "9200:9200"
+    mem_limit: 1g
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:9200 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- Kibana ----------
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.9.0
+    container_name: kibana
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: "http://elasticsearch:9200"
+      SERVER_BASEPATH: "/kibana"        
+      SERVER_REWRITEBASEPATH: "true"    
+    ports:
+      - "5601:5601"
+    networks:
+      - backend
+
+  # ---------- Logstash ----------
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.9.0
+    container_name: logstash
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+    depends_on:
+      - elasticsearch
+    networks:
+      - backend
+
+  # ---------- reforma_gateway ----------
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    volumes:
+      - ../reforma_gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/app/static:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - auth_service
+      - mail_service
+      - kibana
+    restart: unless-stopped
     networks:
       - backend
 
 volumes:
   pgdata:
+  rabbitmq_data:
+  rabbitmq_log:
 
 networks:
   backend:

@@ -14,3 +14,7 @@ class EmailVerificationTokenRepository(ABC):
     @abstractmethod
     def delete(self, token: str):
         pass
+
+    @abstractmethod
+    def create_token(self, user_id: int, hours_valid: int):
+        pass
