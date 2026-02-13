@@ -1,9 +1,7 @@
 from reforma_authorization.infrastructure.db.session import SessionLocal
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
-def get_db():
-    db = SessionLocal()
-    try:
+async def get_db() -> AsyncSession:
+    async with SessionLocal() as db:
         yield db
-    finally:
-        db.close()

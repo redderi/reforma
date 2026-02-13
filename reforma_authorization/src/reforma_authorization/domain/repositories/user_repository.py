@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
 from reforma_authorization.domain.entities.user import User
+import uuid
 
 class UserRepository(ABC):
 
     @abstractmethod
-    def get_by_id(self, id: int) -> User | None:
+    def get_by_id(self, id: uuid.UUID) -> User | None:
         pass
 
     @abstractmethod
@@ -36,5 +37,5 @@ class UserRepository(ABC):
         pass
     
     @abstractmethod
-    def mark_email_as_verified(self, user_id: int):
+    def mark_email_as_verified(self, user_id: uuid.UUID):
         pass

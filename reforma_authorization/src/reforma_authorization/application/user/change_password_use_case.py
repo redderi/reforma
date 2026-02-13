@@ -9,8 +9,8 @@ class ChangePasswordUseCase:
         self.refresh_token_repo = refresh_token_repo
         self.password_hasher = password_hasher
 
-    def execute(self, user_id: int, old_password: str, new_password: str):
-        user = self.user_repo.get_by_id(user_id)
+    async def execute(self, user_id: int, old_password: str, new_password: str):
+        user = await self.user_repo.get_by_id(user_id)
 
         if not user:
             raise ValueError("User not found")
@@ -19,5 +19,5 @@ class ChangePasswordUseCase:
             raise ValueError("Wrong old password")
 
         new_hash = self.password_hasher.hash(new_password)
-        self.user_repo.change_password(user, new_hash)
+        await self.user_repo.change_password(user, new_hash)
         self.refresh_token_repo.delete_all_by_user(user_id)

@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+import uuid
 
 @dataclass
 class User:
-    id: int
+    id: uuid.UUID
     username: str
     email: str
     password_hash: str

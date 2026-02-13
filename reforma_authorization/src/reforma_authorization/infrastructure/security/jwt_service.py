@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 import secrets
 from fastapi.security import OAuth2PasswordBearer
+import uuid
 
 from reforma_authorization.domain.services.token_service import TokenService
 from reforma_authorization.infrastructure.config.jwt_config import (
@@ -15,7 +16,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 class JWTService(TokenService):
 
-    def create_access_token(self, user_id: int) -> str:
+    def create_access_token(self, user_id: uuid.UUID) -> str:
         payload = {
             "sub": str(user_id),
             "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),

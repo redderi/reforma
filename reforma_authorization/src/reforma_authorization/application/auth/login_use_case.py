@@ -11,31 +11,31 @@ class LoginUseCase:
         self,
         user_repo: UserRepository,
         refresh_repo: RefreshTokenRepository,
-        hasher: PasswordHasher,
+        password_hasher: PasswordHasher,
         token_service: TokenService
     ):
         self.user_repo = user_repo
         self.refresh_repo = refresh_repo
-        self.hasher = hasher
+        self.password_hasher = password_hasher
         self.token_service = token_service
 
-    def execute(self, email: str, password: str, device_id: str) -> dict:
-        user = self.user_repo.get_by_email(email)
-
+    async def execute(self, email: str, password: str, device_id: str) -> dict:
+        user = await self.user_repo.get_by_email(email)
         if not user:
             raise ValueError("Invalid user")
-        if not self.hasher.verify(password, user.password_hash):
+
+        if not self.password_hasher.verify(password, user.password_hash):
             raise ValueError("Invalid password")
         
         if not getattr(user, "is_email_verified", False):
             raise ValueError("Email not verified. Please confirm your email before logging in.")
 
-        self.refresh_repo.delete_by_user_and_device(user.id, device_id)
+        await self.refresh_repo.delete_by_user_and_device(user.id, device_id)
 
         access_token = self.token_service.create_access_token(user.id)
         refresh_token = self.token_service.create_refresh_token()
 
-        self.refresh_repo.save(
+        await self.refresh_repo.save(
             RefreshToken(
                 token=refresh_token,
                 user_id=user.id,

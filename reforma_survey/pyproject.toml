@@ -1,0 +1,27 @@
+[project]
+name = "reforma-survey"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "redderi", email = "vrudko22@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aio-pika>=9.5.8",
+    "asyncpg>=0.31.0",
+    "dotenv>=0.9.9",
+    "elasticsearch>=9.3.0",
+    "fastapi>=0.128.8",
+    "psycopg2>=2.9.11",
+    "python-jose>=3.5.0",
+    "sqlalchemy>=2.0.46",
+    "uvicorn[standart]>=0.40.0",
+]
+
+[project.scripts]
+reforma-survey = "reforma_survey:main"
+
+[build-system]
+requires = ["uv_build>=0.8.4,<0.9.0"]
+build-backend = "uv_build"

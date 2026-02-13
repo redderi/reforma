@@ -13,7 +13,7 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
+      - auth_postgres
       - rabbitmq
       - logstash
     networks:
@@ -36,23 +36,63 @@ services:
     networks:
       - backend
 
-  # ---------- PostgreSQL ----------
-  postgres:
+  # ---------- Survey Service ----------
+  survey_service:
+    build:
+      context: ..
+      dockerfile: reforma_survey/Dockerfile
+    container_name: reforma_survey
+    restart: always
+    env_file:
+      - ../reforma_survey/.env
+    ports:
+      - "8002:8000"
+    depends_on:
+      - survey_postgres
+      - rabbitmq
+      - logstash
+    networks:
+      - backend
+
+  # ---------- PostgreSQL auth ----------
+  auth_postgres:
     image: postgres:15
-    container_name: postgres_db
+    container_name: postgres_authorization_db
     restart: always
     environment:
-      POSTGRES_USER: reforma_user
-      POSTGRES_PASSWORD: reforma_pass
+      POSTGRES_USER: reforma_authorization_user
+      POSTGRES_PASSWORD: reforma_authorization_pass
       POSTGRES_DB: reforma_authorization_db
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - auth_pgdata:/var/lib/postgresql/data
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U reforma_user -d reforma_authorization_db"]
+      test: ["CMD-SHELL", "pg_isready -U reforma_authorization_user -d reforma_authorization_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ---------- PostgreSQL survey ----------
+  survey_postgres:
+    image: postgres:15
+    container_name: postgres_survey_db
+    restart: always
+    environment:
+      POSTGRES_USER: reforma_survey_user
+      POSTGRES_PASSWORD: reforma_survey_pass
+      POSTGRES_DB: reforma_survey_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - survey_pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reforma_survey_user -d reforma_survey_db"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -78,7 +118,6 @@ services:
         retries: 5
         start_period: 30s
       volumes:
-        # Монтируем конфиг (создай файл локально!)
         - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
         - rabbitmq_data:/var/lib/rabbitmq
         - rabbitmq_log:/var/log/rabbitmq
@@ -147,13 +186,15 @@ services:
     depends_on:
       - auth_service
       - mail_service
+      - survey_service
       - kibana
     restart: unless-stopped
     networks:
       - backend
 
 volumes:
-  pgdata:
+  survey_pgdata:
+  auth_pgdata:
   rabbitmq_data:
   rabbitmq_log:
 

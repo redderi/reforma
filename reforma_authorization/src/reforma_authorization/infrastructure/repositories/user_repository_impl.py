@@ -1,11 +1,15 @@
+from uuid import UUID
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
 from reforma_authorization.domain.repositories.user_repository import UserRepository
 from reforma_authorization.domain.entities.user import User
 from reforma_authorization.infrastructure.db.models import UserModel
-from sqlalchemy.orm import Session
+from sqlalchemy import delete
 
 
 class UserRepositoryImpl(UserRepository):
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
     def _to_entity(self, model: UserModel) -> User:
@@ -17,73 +21,77 @@ class UserRepositoryImpl(UserRepository):
             is_email_verified=model.is_email_verified
         )
 
-    def get_by_id(self, id: int) -> User | None:
-        model = self.db.get(UserModel, id)
+    async def get_by_id(self, id: UUID) -> User | None:
+        model = await self.db.get(UserModel, id)
         return self._to_entity(model) if model else None
 
-    def get_by_username(self, username: str) -> User | None:
-        model = self.db.query(UserModel).filter_by(username=username).first()
+    async def get_by_username(self, username: str) -> User | None:
+        result = await self.db.execute(
+            select(UserModel).filter_by(username=username)
+        )
+        model = result.scalar_one_or_none()
         return self._to_entity(model) if model else None
 
-    def get_by_email(self, email: str) -> User | None:
-        model = self.db.query(UserModel).filter_by(email=email).first()
+    async def get_by_email(self, email: str) -> User | None:
+        stmt = select(UserModel).where(UserModel.email == email)
+        result = await self.db.execute(stmt)
+        model = result.scalars().first()
         return self._to_entity(model) if model else None
 
-    def create(self, user: User) -> User:
+
+    async def create(self, user: User) -> User:
         model = UserModel(
+            id=user.id,
             username=user.username,
             email=user.email,
             password_hash=user.password_hash,
             is_email_verified=user.is_email_verified
         )
         self.db.add(model)
-        self.db.commit()
-        self.db.refresh(model)
+        await self.db.commit()
+        await self.db.refresh(model)
         return self._to_entity(model)
 
-    def change_email(self, user: User, new_email: str) -> User:
-        model = self.db.get(UserModel, user.id)
+    async def change_email(self, user: User, new_email: str) -> User:
+        model = await self.db.get(UserModel, user.id)
         if not model:
             raise ValueError("User not found")
 
         model.email = new_email
-        self.db.commit()
-        self.db.refresh(model)
+        await self.db.commit()
+        await self.db.refresh(model)
         return self._to_entity(model)
 
-    def change_username(self, user: User, new_username: str) -> User:
-        model = self.db.get(UserModel, user.id)
+    async def change_username(self, user: User, new_username: str) -> User:
+        model = await self.db.get(UserModel, user.id)
         if not model:
             raise ValueError("User not found")
 
         model.username = new_username
-        self.db.commit()
-        self.db.refresh(model)
+        await self.db.commit()
+        await self.db.refresh(model)
         return self._to_entity(model)
 
-    def change_password(self, user: User, new_password_hash: str) -> User:
-        model = self.db.get(UserModel, user.id)
+    async def change_password(self, user: User, new_password_hash: str) -> User:
+        model = await self.db.get(UserModel, user.id)
         if not model:
             raise ValueError("User not found")
 
         model.password_hash = new_password_hash
-        self.db.commit()
-        self.db.refresh(model)
+        await self.db.commit()
+        await self.db.refresh(model)
         return self._to_entity(model)
 
-    def delete(self, user: User) -> None:
-        model = self.db.get(UserModel, user.id)
-        if not model:
-            raise ValueError("User not found")
+    async def delete(self, user: User) -> None:
+        stmt = delete(UserModel).where(UserModel.id == user.id)
+        await self.db.execute(stmt)
+        await self.db.commit()
 
-        self.db.delete(model)
-        self.db.commit()
-
-    def mark_email_as_verified(self, user_id: int):
-        model = self.db.get(UserModel, user_id)
+    async def mark_email_as_verified(self, user_id: UUID):
+        model = await self.db.get(UserModel, user_id)
         if not model:
             raise ValueError("User not found")
 
         model.is_email_verified = True
-        self.db.commit()
-        self.db.refresh(model)
+        await self.db.commit()
+        await self.db.refresh(model)

@@ -2,7 +2,7 @@
 set -e
 
 dockerize \
-    -wait tcp://postgres:5432 \
+    -wait tcp://auth_postgres:5432 \
     -wait tcp://rabbitmq:5672 \
     -wait tcp://elasticsearch:9200 \
     -timeout 120s \

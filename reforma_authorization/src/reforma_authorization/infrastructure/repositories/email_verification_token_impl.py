@@ -1,15 +1,17 @@
 from datetime import datetime, timedelta
 import secrets
-from sqlalchemy.orm import Session
+from uuid import UUID
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
-from reforma_authorization.domain.repositories.email_verification_token import EmailVerificationTokenRepository
+from reforma_authorization.domain.repositories.email_verification_token_repository import EmailVerificationTokenRepository
 from reforma_authorization.domain.entities.email_verification_token import EmailVerificationToken
 from reforma_authorization.infrastructure.db.models import EmailVerificationTokenModel
 
 
 class EmailTokenRepositoryImpl(EmailVerificationTokenRepository):
 
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
     def _to_entity(self, model: EmailVerificationTokenModel) -> EmailVerificationToken:
@@ -19,47 +21,41 @@ class EmailTokenRepositoryImpl(EmailVerificationTokenRepository):
             expires_at=model.expires_at,
         )
 
-    def save(self, token: EmailVerificationToken) -> EmailVerificationToken:
+    async def save(self, token: EmailVerificationToken) -> EmailVerificationToken:
         model = EmailVerificationTokenModel(
             user_id=token.user_id,
             token=token.token,
             expires_at=token.expires_at,
         )
-
         self.db.add(model)
-        self.db.commit()
-        self.db.refresh(model)
-
+        await self.db.commit()
+        await self.db.refresh(model)
         return self._to_entity(model)
 
-    def delete(self, token_str: str) -> None:
-        model = self.db.query(EmailVerificationTokenModel).filter_by(token=token_str).first()
-
+    async def delete(self, token_str: str) -> None:
+        result = await self.db.execute(
+            select(EmailVerificationTokenModel).filter_by(token=token_str)
+        )
+        model = result.scalar_one_or_none()
         if model:
-            self.db.delete(model)
-            self.db.commit()
+            await self.db.delete(model)
+            await self.db.commit()
 
-
-    def get(self, token_str: str) -> EmailVerificationToken | None:
-        model = self.db.query(EmailVerificationTokenModel).filter_by(token=token_str).first()
-
-        if not model:
+    async def get(self, token_str: str) -> EmailVerificationToken | None:
+        result = await self.db.execute(
+            select(EmailVerificationTokenModel).filter_by(token=token_str)
+        )
+        model = result.scalar_one_or_none()
+        if not model or model.expires_at < datetime.utcnow():
             return None
-
-        if model.expires_at < datetime.utcnow():
-            return None
-
         return self._to_entity(model)
 
-
-    def create_token(self, user_id: int, hours_valid: int = 24) -> EmailVerificationToken:
+    async def create_token(self, user_id: UUID, hours_valid: int = 24) -> EmailVerificationToken:
         token_str = secrets.token_urlsafe(32)
         expires_at = datetime.utcnow() + timedelta(hours=hours_valid)
-
         token = EmailVerificationToken(
             user_id=user_id,
             token=token_str,
             expires_at=expires_at,
         )
-
-        return self.save(token)
+        return await self.save(token)

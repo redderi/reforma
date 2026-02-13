@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from reforma_authorization.domain.entities.refresh_token import RefreshToken
+import uuid
 
 class RefreshTokenRepository(ABC):
 
@@ -16,9 +17,9 @@ class RefreshTokenRepository(ABC):
         pass
 
     @abstractmethod
-    def delete_by_user_and_device(self, user_id: int, device_id: str) -> None:
+    def delete_by_user_and_device(self, user_id: uuid.UUID, device_id: str) -> None:
         pass
     
     @abstractmethod
-    def delete_all_by_user(self, user_id: int) -> None:
+    def delete_all_by_user(self, user_id: uuid.UUID) -> None:
         pass

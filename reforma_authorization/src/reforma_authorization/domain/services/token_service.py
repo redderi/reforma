@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
+import uuid
 
 class TokenService(ABC):
 
     @abstractmethod
-    def create_access_token(self, user_id: int) -> str:
+    def create_access_token(self, user_id: uuid.UUID) -> str:
         pass
 
     @abstractmethod

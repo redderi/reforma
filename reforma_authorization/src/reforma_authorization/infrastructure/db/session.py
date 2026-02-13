@@ -1,30 +1,20 @@
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-
+from reforma_authorization.infrastructure.config.db_config import (
+    DATABASE_URL, 
+    DB_HOST, 
+    DB_NAME, 
+    DB_PASSWORD, 
+    DB_PORT, 
+    DB_USER
+)
+from reforma_authorization.common.logger import log_info
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from reforma_authorization.infrastructure.db.base import Base 
-from reforma_authorization.infrastructure.db.models import UserModel 
-
-import os 
-from dotenv import load_dotenv 
-
-load_dotenv() 
-DB_NAME: str = os.getenv("POSTGRES_DB", "postgres_db") 
-DB_USER: str = os.getenv("POSTGRES_USER", "postgres") 
-DB_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "1234") 
-DB_HOST: str = os.getenv("POSTGRES_HOST", "localhost") 
-DB_PORT: int = os.getenv("POSTGRES_PORT", 5432)
-
-DATABASE_URL = (
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
-
-print("USER =", DB_USER)
-print("PASSWORD =", DB_PASSWORD)
-print("HOST =", DB_HOST)
-print("DB =", DB_NAME)
+from reforma_authorization.infrastructure.db.models import UserModel
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession 
 
 def create_database():
     conn = psycopg2.connect(
@@ -42,15 +32,25 @@ def create_database():
     exists = cur.fetchone()
     if not exists:
         cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(DB_NAME)))
-        print(f"База {DB_NAME} создана!")
+        log_info(f"База {DB_NAME} создана", service="auth-service")
     else:
-        print(f"База {DB_NAME} уже существует.")
+        log_info(f"База {DB_NAME} уже существует", service="auth-service")
 
     cur.close()
     conn.close()
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+)
 
-Base.metadata.create_all(bind=engine)
+SessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
+
+async def init_models():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

@@ -8,7 +8,6 @@ from elasticsearch import AsyncElasticsearch
 
 mail_consumer = MailConsumer()
 consumer_task: asyncio.Task | None = None
-
 es_client: AsyncElasticsearch | None = None
 
 async def wait_for_elasticsearch(retries: int = 20, delay: int = 10):
@@ -40,11 +39,6 @@ async def wait_for_rabbitmq(retries: int = 20, delay: int = 10):
 async def lifespan(app: FastAPI):
     try:
         await wait_for_rabbitmq()
-        # await asyncio.gather(
-        #     wait_for_rabbitmq(),
-        #     wait_for_elasticsearch()
-        # )
-
         global consumer_task
         consumer_task = asyncio.create_task(mail_consumer.start_consuming())
 
