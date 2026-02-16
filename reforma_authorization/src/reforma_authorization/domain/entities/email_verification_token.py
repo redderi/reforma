@@ -7,3 +7,4 @@ class EmailVerificationToken:
     token: str
     user_id: uuid.UUID
     expires_at: datetime
+    data: dict | None = None 

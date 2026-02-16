@@ -13,7 +13,7 @@ from reforma_survey.application.handlers.user_delete_handler import UserDeletedH
 from reforma_survey.application.handlers.user_change_username_handler import UserChangeUsernameHandler
 from reforma_survey.application.handlers.user_change_email_handler import UserChangeEmailHandler
 
-from reforma_survey.common.logger import log_info, log_warning, log_error
+from reforma_common.logger import log_info, log_warning, log_error
 
 HANDLERS = {
     USER_CREATE_ROUTING_KEY: UserCreatedHandler(),

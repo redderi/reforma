@@ -4,6 +4,7 @@ from reforma_authorization.domain.repositories.user_repository import UserReposi
 from reforma_authorization.domain.repositories.refresh_token_repository import RefreshTokenRepository
 from reforma_authorization.domain.services.password_hasher import PasswordHasher
 from reforma_authorization.domain.services.token_service import TokenService
+from reforma_authorization.domain.entities.user import UserStatus
 
 class LoginUseCase:
 
@@ -29,10 +30,17 @@ class LoginUseCase:
         
         if not getattr(user, "is_email_verified", False):
             raise ValueError("Email not verified. Please confirm your email before logging in.")
+        
+        if user.status in [UserStatus.DEACTIVATED, UserStatus.SUSPENDED, UserStatus.DELETED]:
+            raise ValueError(f"Access denied. User status: {user.status}")
 
         await self.refresh_repo.delete_by_user_and_device(user.id, device_id)
 
-        access_token = self.token_service.create_access_token(user.id)
+        access_token = self.token_service.create_access_token(
+            user_id=user.id,
+            user_role=user.role,
+            user_status=user.status 
+        )
         refresh_token = self.token_service.create_refresh_token()
 
         await self.refresh_repo.save(

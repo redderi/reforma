@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from reforma_survey.common.logger import log_info
+from reforma_common.logger import log_info
 
 router = APIRouter(prefix="/survey", tags=["survey"])
 

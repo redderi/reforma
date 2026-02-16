@@ -9,12 +9,17 @@ from reforma_authorization.infrastructure.config.db_config import (
     DB_PORT, 
     DB_USER
 )
-from reforma_authorization.common.logger import log_info
+from reforma_common.logger import log_info
+from reforma_common.roles import UserRole
+from reforma_common.user_status import UserStatus
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from reforma_authorization.infrastructure.db.base import Base 
 from reforma_authorization.infrastructure.db.models import UserModel
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession 
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from reforma_authorization.infrastructure.config.admin_config import ADMIN_EMAIL, ADMIN_PASSWORD
+from sqlalchemy import select
+from reforma_authorization.infrastructure.security.password_hasher import BcryptPasswordHasher
 
 def create_database():
     conn = psycopg2.connect(
@@ -54,3 +59,26 @@ SessionLocal = sessionmaker(
 async def init_models():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+async def create_initial_admin():
+    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        return
+
+    async with SessionLocal() as db:
+        async with db.begin():
+            result = await db.execute(
+                select(UserModel).where(UserModel.role == UserRole.ADMIN.value)
+            )
+            admin_exists = result.scalar_one_or_none()
+            if admin_exists:
+                return
+
+            admin = UserModel(
+                username="reforma_admin",
+                email=ADMIN_EMAIL,
+                password_hash=BcryptPasswordHasher().hash(ADMIN_PASSWORD),
+                role=UserRole.ADMIN.value,
+                is_email_verified=True,
+                status=UserStatus.ACTIVE.value
+            )
+            db.add(admin)

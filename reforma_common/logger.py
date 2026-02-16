@@ -22,7 +22,6 @@ class AsyncLogstashHandler(logging.Handler):
 
     def emit(self, record):
         log = self.format(record)
-        # Создаём задачу в loop
         loop = asyncio.get_event_loop()
         if loop.is_running():
             loop.create_task(self.send(log))
@@ -60,10 +59,8 @@ def log(level: str, message: str, service: str = "unknown", context: Optional[di
         logger.info(log_message)
 
 
-
 def log_info(message: str, service="unknown", context: Optional[dict] = None, trace_id: Optional[str] = None):
     log("INFO", message, service, context, trace_id)
-
 
 def log_error(message: str, service="unknown", context: Optional[dict] = None, trace_id: Optional[str] = None):
     log("ERROR", message, service, context, trace_id)

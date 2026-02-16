@@ -19,6 +19,7 @@ class EmailTokenRepositoryImpl(EmailVerificationTokenRepository):
             user_id=model.user_id,
             token=model.token,
             expires_at=model.expires_at,
+            data=model.data
         )
 
     async def save(self, token: EmailVerificationToken) -> EmailVerificationToken:
@@ -26,6 +27,7 @@ class EmailTokenRepositoryImpl(EmailVerificationTokenRepository):
             user_id=token.user_id,
             token=token.token,
             expires_at=token.expires_at,
+            data=token.data
         )
         self.db.add(model)
         await self.db.commit()
@@ -50,12 +52,19 @@ class EmailTokenRepositoryImpl(EmailVerificationTokenRepository):
             return None
         return self._to_entity(model)
 
-    async def create_token(self, user_id: UUID, hours_valid: int = 24) -> EmailVerificationToken:
+    async def create_token(
+        self, 
+        user_id: UUID, 
+        hours_valid: int = 24, 
+        data: dict | None = None
+    ) -> EmailVerificationToken:
         token_str = secrets.token_urlsafe(32)
         expires_at = datetime.utcnow() + timedelta(hours=hours_valid)
         token = EmailVerificationToken(
             user_id=user_id,
             token=token_str,
             expires_at=expires_at,
+            data=data or {}
         )
         return await self.save(token)
+

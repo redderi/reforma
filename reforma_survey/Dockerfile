@@ -15,12 +15,13 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
 COPY reforma_survey /app/reforma_survey
+COPY reforma_common /app/reforma_common
 
 RUN pip install --no-cache-dir -r /app/reforma_survey/requirements.txt
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app/reforma_survey/src
+ENV PYTHONPATH=/app/reforma_survey/src:/app/reforma_common
 EXPOSE 8000
 
 COPY reforma_survey/entrypoint.sh /app/entrypoint.sh

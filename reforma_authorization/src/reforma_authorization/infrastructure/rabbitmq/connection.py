@@ -7,7 +7,7 @@ from reforma_authorization.infrastructure.config.rabbitmq_config import (
     RABBITMQ_USER,
     RABBITMQ_PASSWORD,
 )
-from reforma_authorization.common.logger import log_info, log_error
+from reforma_common.logger import log_info, log_error
 
 RABBITMQ_URL = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASSWORD}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/"
 

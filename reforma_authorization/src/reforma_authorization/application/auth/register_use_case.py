@@ -8,13 +8,15 @@ import secrets
 from reforma_authorization.domain.repositories.email_verification_token_repository import EmailVerificationTokenRepository
 from reforma_authorization.infrastructure.rabbitmq.publisher import EventPublisher
 from reforma_authorization.infrastructure.security.password_hasher import BcryptPasswordHasher
-from reforma_authorization.common.logger import log_info
+from reforma_common.logger import log_info
 from reforma_authorization.infrastructure.config.rabbitmq_config import (
     EMAIL_VERIFICATION_ROUTING_KEY,
     MAIL_EXCHANGE, 
     USER_EXCHANGE, 
     USER_CREATE_ROUTING_KEY
 )
+from reforma_common.roles import UserRole
+from reforma_common.user_status import UserStatus
 
 class RegisterUseCase:
     def __init__(
@@ -39,7 +41,12 @@ class RegisterUseCase:
         hashed_password = self.password_hasher.hash(password)
 
         user = await self.user_repo.create(
-            User(id=uuid.uuid4(), username=username, email=email, password_hash=hashed_password)
+            User(id=uuid.uuid4(),
+                  username=username, 
+                  email=email, 
+                  password_hash=hashed_password, 
+                  role=UserRole.USER.value, 
+                  status=UserStatus.REGISTERED.value)
         )
 
         token = await self.token_repo.create_token(user.id, hours_valid=24)

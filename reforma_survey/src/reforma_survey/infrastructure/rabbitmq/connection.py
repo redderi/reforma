@@ -1,7 +1,7 @@
 import json
 from typing import Optional
 import aio_pika
-from reforma_survey.common.logger import log_info, log_error
+from reforma_common.logger import log_info, log_error
 from reforma_survey.infrastructure.config.rabbitmq_config import (
     RABBITMQ_HOST,
     RABBITMQ_PORT,

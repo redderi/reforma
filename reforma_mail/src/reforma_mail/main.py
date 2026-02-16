@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from reforma_mail.infrastructure.rabbitmq.consumer import MailConsumer
 from reforma_mail.presentation.api.mail import router as mail_router
 import asyncio
-from reforma_mail.common.logger import log_info, log_error
+from reforma_common.logger import log_info, log_error
 from elasticsearch import AsyncElasticsearch
 
 mail_consumer = MailConsumer()

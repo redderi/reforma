@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from reforma_authorization.infrastructure.repositories.email_verification_token_impl import EmailTokenRepositoryImpl
+from reforma_authorization.application.user.soft_delete_use_case import SoftDeleteUserUseCase
+from reforma_authorization.application.admin.deactivate_user_use_case import DeactivateUserUseCase
+from reforma_authorization.presentation.schemas.auth_request import RestoreRequest
+from reforma_common.user_status import UserStatus
 from sqlalchemy.ext.asyncio import AsyncSession
 from reforma_authorization.presentation.dependencies.get_db import get_db
-from reforma_authorization.presentation.dependencies.current_user import get_current_user_id
+from reforma_authorization.presentation.dependencies.get_current_user_id import get_current_user_id
 from reforma_authorization.infrastructure.repositories.refresh_token_repository_impl import RefreshTokenRepositoryImpl
 from reforma_authorization.infrastructure.repositories.user_repository_impl import UserRepositoryImpl
 from reforma_authorization.infrastructure.security.password_hasher import BcryptPasswordHasher
-from reforma_authorization.application.user.delete_user_use_case import DeleteUserUseCase
 from reforma_authorization.application.user.change_email_use_case import ChangeEmailUseCase
 from reforma_authorization.application.user.change_username_use_case import ChangeUsernameUseCase
 from reforma_authorization.application.user.change_password_use_case import ChangePasswordUseCase
@@ -15,7 +19,7 @@ from reforma_authorization.presentation.schemas.change_requst import (
     ChangeEmailRequest,
     ChangeUsernameRequest
 )
-from reforma_authorization.common.logger import log_info, log_warning, log_error
+from reforma_common.logger import log_info, log_warning, log_error
 from uuid import UUID
 
 router = APIRouter(prefix="/user/change", tags=["Change"])
@@ -73,41 +77,18 @@ async def change_password(
     log_info(f"Change password attempt for user_id={user_id}", service="user-service")
     try:
         use_case = ChangePasswordUseCase(
-            UserRepositoryImpl(db),
-            RefreshTokenRepositoryImpl(db),
-            BcryptPasswordHasher()
+            user_repo=UserRepositoryImpl(db),
+            refresh_token_repo=RefreshTokenRepositoryImpl(db),
+            token_repo=EmailTokenRepositoryImpl(db),
+            password_hasher=BcryptPasswordHasher(),
+            event_publisher=event_publisher
         )
         await use_case.execute(user_id, data.old_password, data.new_password)
         log_info(f"Password changed successfully for user_id={user_id}", service="user-service")
-        return {"detail": "Password updated"}
+        return {"message": "Подтвердите письмо в email, чтобы завершить смену пароля."}
     except ValueError as e:
         log_warning(f"Failed to change password for user_id={user_id}: {e}", service="user-service")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         log_error(f"Unexpected error changing password for user_id={user_id}: {e}", service="user-service")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-@router.delete("/delete")
-async def delete_user(
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
-):
-    log_info(f"Delete user attempt for user_id={user_id}", service="auth-service")
-
-    try:
-        use_case = DeleteUserUseCase(
-            UserRepositoryImpl(db),
-            RefreshTokenRepositoryImpl(db),
-            event_publisher
-        )
-        await use_case.execute(user_id)
-        log_info(f"User deleted successfully: user_id={user_id}", service="auth-service")
-        return {"detail": "User deleted successfully."}
-
-    except ValueError as e:
-        log_warning(f"Failed to delete user user_id={user_id}: {e}", service="auth-service")
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        log_error(f"Unexpected error deleting user user_id={user_id}: {e}", service="auth-service")
         raise HTTPException(status_code=500, detail="Internal server error")

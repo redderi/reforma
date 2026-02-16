@@ -1,4 +1,4 @@
-from reforma_survey.common.logger import log_error, log_info, log_warning
+from reforma_common.logger import log_error, log_info, log_warning
 from reforma_survey.infrastructure.repositories.user_profile_repository_impl import UserProfileRepositoryImpl
 from reforma_survey.infrastructure.db.session import SessionLocal
 from reforma_survey.infrastructure.db.models import UserProfileModel

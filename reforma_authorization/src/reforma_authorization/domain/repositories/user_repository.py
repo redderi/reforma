@@ -1,41 +1,82 @@
 from abc import ABC, abstractmethod
-from reforma_authorization.domain.entities.user import User
+from reforma_authorization.domain.entities.user import User, UserStatus
 import uuid
+
 
 class UserRepository(ABC):
 
     @abstractmethod
-    def get_by_id(self, id: uuid.UUID) -> User | None:
+    async def get_by_id(self, id: uuid.UUID) -> User | None:
         pass
 
     @abstractmethod
-    def get_by_username(self, username: str) -> User | None:
+    async def get_by_username(self, username: str) -> User | None:
         pass                            
 
     @abstractmethod
-    def get_by_email(self, email: str) -> User | None:
+    async def get_by_email(self, email: str) -> User | None:
         pass
 
     @abstractmethod
-    def create(self, user: User) -> User:
+    async def create(self, user: User) -> User:
         pass
 
     @abstractmethod
-    def change_email(self, user: User, new_email: str) -> User:
+    async def change_email(self, user: User, new_email: str) -> User:
         pass
 
     @abstractmethod
-    def change_username(self, user: User, new_username: str) -> User:
+    async def change_username(self, user: User, new_username: str) -> User:
         pass
 
     @abstractmethod
-    def change_password(self, user: User, new_password_hash: str) -> User:
+    async def change_password(self, user: User, new_password_hash: str) -> User:
         pass
 
     @abstractmethod
-    def delete(self, user: User) -> None:
+    async def update(self, user: User) -> User:
+        pass
+
+    @abstractmethod
+    async def delete(self, user: User) -> None:
         pass
     
     @abstractmethod
-    def mark_email_as_verified(self, user_id: uuid.UUID):
+    async def delete_by_id(self, user_id: uuid.UUID) -> None:
+        pass
+
+    @abstractmethod
+    async def mark_email_as_verified(self, user_id: uuid.UUID) -> None:
+        pass
+
+    @abstractmethod
+    async def get_all(self, include_deleted: bool = False) -> list[User]:
+        pass
+
+    @abstractmethod
+    async def activate(self, user: User) -> User:
+        pass
+
+    @abstractmethod
+    async def deactivate(self, user: User) -> User:
+        pass
+
+    @abstractmethod
+    async def suspend(self, user: User, reason: str, suspended_by: uuid.UUID) -> User:
+        pass
+
+    @abstractmethod
+    async def restore(self, user: User) -> User:
+        pass
+
+    @abstractmethod
+    async def get_by_status(self, status: UserStatus) -> list[User]:
+        pass
+    
+    @abstractmethod
+    async def hard_delete(self, user: User) -> None:
+        pass
+
+    @abstractmethod
+    async def hard_delete_by_id(self, user_id: uuid.UUID) -> None:
         pass

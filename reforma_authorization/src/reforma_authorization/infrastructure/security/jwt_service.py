@@ -16,9 +16,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 class JWTService(TokenService):
 
-    def create_access_token(self, user_id: uuid.UUID) -> str:
+    def create_access_token(self, user_id: uuid.UUID, user_role: str, user_status: str) -> str:
         payload = {
             "sub": str(user_id),
+            "role": user_role,
+            "status": user_status,
             "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
             "iat": datetime.utcnow(),
             "iss": "reforma-api",

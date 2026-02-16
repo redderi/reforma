@@ -2,9 +2,9 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from reforma_survey.infrastructure.rabbitmq.consumer import UserConsumer
 from reforma_survey.presentation.api.survey import router as survay_router
-from reforma_survey.presentation.api.user import router as user_router
+from reforma_survey.presentation.api.user_profile import router as user_router
 import asyncio
-from reforma_survey.common.logger import log_info, log_error
+from reforma_common.logger import log_info, log_error
 from elasticsearch import AsyncElasticsearch
 from reforma_survey.infrastructure.db.session import create_database, init_models
 

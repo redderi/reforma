@@ -5,17 +5,17 @@ import uuid
 class EmailVerificationTokenRepository(ABC):
 
     @abstractmethod
-    def save(self, token: EmailVerificationToken):
+    async def save(self, token: EmailVerificationToken):
         pass
     
     @abstractmethod
-    def get(self, token: str) -> EmailVerificationToken | None:
+    async def get(self, token: str) -> EmailVerificationToken | None:
         pass
 
     @abstractmethod
-    def delete(self, token: str):
+    async def delete(self, token: str):
         pass
 
     @abstractmethod
-    def create_token(self, user_id: uuid.UUID, hours_valid: int):
+    async def create_token(self, user_id: uuid.UUID, hours_valid: int, data: dict):
         pass

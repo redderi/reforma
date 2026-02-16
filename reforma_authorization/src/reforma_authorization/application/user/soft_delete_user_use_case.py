@@ -8,7 +8,7 @@ from reforma_authorization.infrastructure.config.rabbitmq_config import (
 from reforma_authorization.domain.entities.user import User
 
 
-class DeleteUserUseCase:
+class SoftDeleteUserUseCase:
     def __init__(
         self,
         user_repo: UserRepository,

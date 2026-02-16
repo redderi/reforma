@@ -16,11 +16,13 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
 
 COPY reforma_authorization /app/reforma_authorization
 
+COPY reforma_common /app/reforma_common
+
 RUN pip install --no-cache-dir -r /app/reforma_authorization/requirements.txt
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app/reforma_authorization/src
+ENV PYTHONPATH=/app/reforma_authorization/src:/app/reforma_common
 EXPOSE 8000
 
 COPY reforma_authorization/entrypoint.sh /app/entrypoint.sh

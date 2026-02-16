@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from reforma_mail.common.logger import log_info, log_error
+from reforma_common.logger import log_info, log_error
 
 router = APIRouter(prefix="/mail", tags=["Mail"])
 

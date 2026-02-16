@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from reforma_survey.infrastructure.db.base import Base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession 
-from reforma_survey.common.logger import log_info
+from reforma_common.logger import log_info
 
 def create_database():
     conn = psycopg2.connect(

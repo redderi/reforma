@@ -15,12 +15,13 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
 COPY reforma_mail /app/reforma_mail
+COPY reforma_common /app/reforma_common
 
 RUN pip install --no-cache-dir -r /app/reforma_mail/requirements.txt
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app/reforma_mail/src
+ENV PYTHONPATH=/app/reforma_mail/src:/app/reforma_common
 EXPOSE 8000
 
 COPY reforma_mail/entrypoint.sh /app/entrypoint.sh

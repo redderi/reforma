@@ -4,7 +4,8 @@ from sqlalchemy import Column, String, Text, JSON, DateTime, Integer, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from reforma_survey.infrastructure.db.base import Base
-from datetime import datetime
+from datetime import datetime, date
+from sqlalchemy import Date
 
 class UserProfileModel(Base):
     __tablename__ = "user_profile"
@@ -14,6 +15,11 @@ class UserProfileModel(Base):
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     profile_picture: Mapped[str | None] = mapped_column(String, nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    gender: Mapped[str | None] = mapped_column(String, nullable=True)
+    birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    country: Mapped[str | None] = mapped_column(String, nullable=True)
+    city: Mapped[str | None] = mapped_column(String, nullable=True)
 
     surveys: Mapped[list["SurveyModel"]] = relationship("SurveyModel", back_populates="owner", cascade="all, delete-orphan")
     templates: Mapped[list["TemplateModel"]] = relationship("TemplateModel", back_populates="owner", cascade="all, delete-orphan")

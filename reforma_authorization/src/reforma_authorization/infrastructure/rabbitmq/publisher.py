@@ -1,7 +1,7 @@
 import asyncio
 import json
 from reforma_authorization.infrastructure.rabbitmq.connection import RabbitMQConnection
-from reforma_authorization.common.logger import log_info, log_error
+from reforma_common.logger import log_info, log_error
 
 class EventPublisher:
     _instance = None

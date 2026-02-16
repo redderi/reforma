@@ -2,13 +2,15 @@ import json
 import aio_pika
 from reforma_mail.infrastructure.rabbitmq.connection import RabbitMQConnection
 from reforma_mail.application.handlers.email_verification_handler import EmailVerificationHandler
-from reforma_mail.application.handlers.password_reset_handler import PasswordResetHandler
-from reforma_mail.infrastructure.config.rabbitmq_config import MAIL_EXCHANGE, MAIL_QUEUE, EMAIL_VERIFICATION_ROUTING_KEY
-from reforma_mail.common.logger import log_info, log_error, log_warning
+from reforma_mail.application.handlers.password_change_handler import PasswordChangeHandler
+from reforma_mail.infrastructure.config.rabbitmq_config import MAIL_EXCHANGE, MAIL_QUEUE, EMAIL_VERIFICATION_ROUTING_KEY, CHANGE_PASSWORD_ROUTING_KEY, USER_RESTORE_ROUTING_KEY
+from reforma_common.logger import log_info, log_error, log_warning
+from reforma_mail.application.handlers.user_restore_handler import UserRestoreHandler
 
 HANDLERS = {
     EMAIL_VERIFICATION_ROUTING_KEY: EmailVerificationHandler(),
-    "PASSWORD_RESET": PasswordResetHandler(),
+    CHANGE_PASSWORD_ROUTING_KEY: PasswordChangeHandler(),
+    USER_RESTORE_ROUTING_KEY: UserRestoreHandler()
 }
 
 class MailConsumer:
@@ -41,7 +43,7 @@ class MailConsumer:
         queue = await channel.declare_queue(MAIL_QUEUE, durable=True)
 
         await queue.bind(exchange, routing_key=EMAIL_VERIFICATION_ROUTING_KEY)
-        await queue.bind(exchange, routing_key="PASSWORD_RESET")
+        await queue.bind(exchange, routing_key=CHANGE_PASSWORD_ROUTING_KEY)
         log_info("Start Consuming", service="mail_service")
 
         async def callback(message: aio_pika.IncomingMessage):
@@ -52,7 +54,7 @@ class MailConsumer:
 
                 handler = HANDLERS.get(event_type)
                 if handler:
-                    handler.handle(payload)
+                    await handler.handle(payload)
                 else:
                     log_warning(f"[MailConsumer] Unknown event type: {event_type}", service="mail-service")
 
