@@ -2,7 +2,7 @@ from reforma_survey.infrastructure.repositories.user_profile_repository_impl imp
 from reforma_survey.infrastructure.db.session import SessionLocal
 from reforma_survey.domain.entities.user_profile import UserProfile
 
-class UserCreatedHandler:
+class CreateUserProfileHandler:
     async def handle(self, payload: dict):
         async with SessionLocal() as db:
             async with db.begin():  

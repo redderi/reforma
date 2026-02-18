@@ -27,7 +27,9 @@ class UserProfileRepositoryImpl(UserProfileRepository):
             )
         )
         model = result.scalar_one_or_none()
-        return self._to_entity(model) if model else None
+        if not model:
+            return None
+        return self._to_entity(model, load_collections=True)
 
     async def get_by_email(self, email: str) -> Optional[UserProfile]:
         result = await self.db.execute(
@@ -40,12 +42,20 @@ class UserProfileRepositoryImpl(UserProfileRepository):
             )
         )
         model = result.scalar_one_or_none()
-        return self._to_entity(model) if model else None
+        if not model:
+            return None
+        return self._to_entity(model, load_collections=True)
 
     async def get_all(self) -> List[UserProfile]:
-        result = await self.db.execute(select(UserProfileModel))
+        result = await self.db.execute(
+            select(UserProfileModel).options(
+                selectinload(UserProfileModel.surveys),
+                selectinload(UserProfileModel.templates),
+                selectinload(UserProfileModel.reports),
+            )
+        )
         models = result.scalars().all()
-        return [self._to_entity(model) for model in models]
+        return [self._to_entity(model, load_collections=True) for model in models]
 
     async def create(self, profile: UserProfile) -> UserProfile:
         model = UserProfileModel(
@@ -61,44 +71,42 @@ class UserProfileRepositoryImpl(UserProfileRepository):
         )
         self.db.add(model)
         await self.db.flush()
-        await self.db.refresh(model)
-        return self._to_entity(model)
-
+        return self._to_entity(model)  
 
     async def update_username(self, user_id: UUID, new_username: str) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.username = new_username
-        await self.db.refresh(model)
-        return self._to_entity(model)
+        await self.db.flush()
+        return self._to_entity(model)  
 
     async def update_email(self, user_id: UUID, new_email: str) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.email = new_email
-        await self.db.refresh(model)
+        await self.db.flush()
         return self._to_entity(model)
 
     async def update_profile_picture(self, user_id: UUID, picture_url: str | None) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.profile_picture = picture_url
-        await self.db.refresh(model)
+        await self.db.flush()
         return self._to_entity(model)
 
     async def update_bio(self, user_id: UUID, bio: str | None) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.bio = bio
-        await self.db.refresh(model)
+        await self.db.flush()
         return self._to_entity(model)
 
     async def update_gender(self, user_id: UUID, gender: str | None) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.gender = gender
-        await self.db.refresh(model)
+        await self.db.flush()
         return self._to_entity(model)
 
     async def update_birth_date(self, user_id: UUID, birth_date: date | None) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.birth_date = birth_date
-        await self.db.refresh(model)
+        await self.db.flush()
         return self._to_entity(model)
 
     async def update_location(
@@ -110,7 +118,7 @@ class UserProfileRepositoryImpl(UserProfileRepository):
         model = await self._get_model_or_raise(user_id)
         model.country = country
         model.city = city
-        await self.db.refresh(model)
+        await self.db.flush()
         return self._to_entity(model)
 
     async def delete(self, user_id: UUID) -> None:
@@ -120,10 +128,19 @@ class UserProfileRepositoryImpl(UserProfileRepository):
     async def _get_model_or_raise(self, user_id: UUID) -> UserProfileModel:
         model = await self.db.get(UserProfileModel, user_id)
         if not model:
-            raise ValueError("UserProfile not found")
+            raise ValueError(f"UserProfile with id {user_id} not found")
         return model
 
-    def _to_entity(self, model: UserProfileModel) -> UserProfile:
+    def _to_entity(self, model: UserProfileModel, load_collections: bool = False) -> UserProfile:
+        surveys = []
+        templates = []
+        reports = []
+
+        if load_collections:
+            surveys = [s.id for s in model.surveys]
+            templates = [t.id for t in model.templates]
+            reports = [r.id for r in model.reports]
+
         return UserProfile(
             id=model.id,
             username=model.username,
@@ -134,7 +151,8 @@ class UserProfileRepositoryImpl(UserProfileRepository):
             birth_date=model.birth_date,
             country=model.country,
             city=model.city,
-            surveys=[s.id for s in getattr(model, "surveys", [])],
-            templates=[t.id for t in getattr(model, "templates", [])],
-            reports=[r.id for r in getattr(model, "reports", [])],
+            surveys=surveys,
+            templates=templates,
+            reports=reports,
         )
+    

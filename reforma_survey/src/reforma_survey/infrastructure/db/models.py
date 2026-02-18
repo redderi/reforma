@@ -1,11 +1,17 @@
 # reforma_survey/infrastructure/db/models.py
+
 import uuid
-from sqlalchemy import Column, String, Text, JSON, DateTime, Integer, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from reforma_survey.infrastructure.db.base import Base
 from datetime import datetime, date
-from sqlalchemy import Date
+
+from sqlalchemy import (
+    Column, String, Text, JSON, DateTime, Integer, ForeignKey, Boolean,
+    Date
+)
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy.orm import relationship, Mapped, mapped_column, Index
+
+from reforma_survey.infrastructure.db.base import Base
+
 
 class UserProfileModel(Base):
     __tablename__ = "user_profile"
@@ -21,9 +27,15 @@ class UserProfileModel(Base):
     country: Mapped[str | None] = mapped_column(String, nullable=True)
     city: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    surveys: Mapped[list["SurveyModel"]] = relationship("SurveyModel", back_populates="owner", cascade="all, delete-orphan")
-    templates: Mapped[list["TemplateModel"]] = relationship("TemplateModel", back_populates="owner", cascade="all, delete-orphan")
-    reports: Mapped[list["ReportModel"]] = relationship("ReportModel", back_populates="owner", cascade="all, delete-orphan")
+    surveys: Mapped[list["SurveyModel"]] = relationship(
+        "SurveyModel", back_populates="owner", cascade="all, delete-orphan"
+    )
+    templates: Mapped[list["TemplateModel"]] = relationship(
+        "TemplateModel", back_populates="owner", cascade="all, delete-orphan"
+    )
+    reports: Mapped[list["ReportModel"]] = relationship(
+        "ReportModel", back_populates="owner", cascade="all, delete-orphan"
+    )
 
 
 class TemplateModel(Base):
@@ -49,14 +61,21 @@ class SurveyModel(Base):
     title: Mapped[str] = mapped_column(String)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
+    published: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     owner: Mapped["UserProfileModel"] = relationship("UserProfileModel", back_populates="surveys")
     template: Mapped["TemplateModel"] = relationship("TemplateModel", back_populates="surveys")
-    questions: Mapped[list["QuestionModel"]] = relationship("QuestionModel", back_populates="survey", cascade="all, delete-orphan")
-    responses: Mapped[list["ResponseModel"]] = relationship("ResponseModel", back_populates="survey", cascade="all, delete-orphan")
-    reports: Mapped[list["ReportModel"]] = relationship("ReportModel", back_populates="survey", cascade="all, delete-orphan")
+    questions: Mapped[list["QuestionModel"]] = relationship(
+        "QuestionModel", back_populates="survey", cascade="all, delete-orphan"
+    )
+    responses: Mapped[list["ResponseModel"]] = relationship(
+        "ResponseModel", back_populates="survey", cascade="all, delete-orphan"
+    )
+    reports: Mapped[list["ReportModel"]] = relationship(
+        "ReportModel", back_populates="survey", cascade="all, delete-orphan"
+    )
 
 
 class QuestionModel(Base):
@@ -68,10 +87,13 @@ class QuestionModel(Base):
     answer_type: Mapped[str] = mapped_column(String)
     options: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     style: Mapped[dict] = mapped_column(JSON, default=dict)
-    order: Mapped[int] = mapped_column(Integer, default=0)
+    
+    order: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
 
     survey: Mapped["SurveyModel"] = relationship("SurveyModel", back_populates="questions")
-    branching_rules: Mapped[list["BranchingRuleModel"]] = relationship("BranchingRuleModel", back_populates="question", cascade="all, delete-orphan")
+    branching_rules: Mapped[list["BranchingRuleModel"]] = relationship(
+        "BranchingRuleModel", back_populates="question", cascade="all, delete-orphan"
+    )
 
 
 class BranchingRuleModel(Base):
@@ -97,14 +119,24 @@ class ResponseModel(Base):
 
 
 class ReportModel(Base):
-    __tablename__ = "report"
+    __tablename__ = "reports"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    survey_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("survey.id"))
-    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user_profile.id"))
-    analytics: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    survey_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("survey.id"), nullable=False)
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user_profile.id"), nullable=False)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    report_type: Mapped[str] = mapped_column(String(20), nullable=False, default="pdf")
+    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    file_urls: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
+    error_message: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    survey: Mapped["SurveyModel"] = relationship("SurveyModel", back_populates="reports")
-    owner: Mapped["UserProfileModel"] = relationship("UserProfileModel", back_populates="reports")
+    survey: Mapped["SurveyModel"] = relationship("SurveyModel", back_populates="reports", cascade="all, delete-orphan")
+    owner: Mapped["UserProfileModel"] = relationship("UserProfileModel", back_populates="reports", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index('ix_reports_survey_status', 'survey_id', 'status'),
+        Index('ix_reports_owner_status', 'owner_id', 'status'),
+        Index('ix_reports_requested_at', 'requested_at desc'), 
+    )

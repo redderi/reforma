@@ -1,0 +1,24 @@
+[filer.options]
+recursive_delete = false
+max_file_name_length = 512
+
+[leveldb2]
+enabled = false
+
+[postgres2]
+enabled = true
+createTable = """
+  CREATE TABLE IF NOT EXISTS "%s" (
+    dirhash   BIGINT,
+    name      VARCHAR(65535),
+    directory VARCHAR(65535),
+    meta      bytea,
+    PRIMARY KEY (dirhash, name)
+  )
+"""
+hostname = "seaweed_postgres"
+port = 5432
+username = "seaweed"
+password = "strong_seaweed_pass"
+database = "seaweedfs"
+sslmode = "disable"

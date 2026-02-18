@@ -1,0 +1,53 @@
+{
+  "identities": [
+    {
+      "name": "admin",
+      "credentials": [
+        {
+          "accessKey": "BESTACCESSKEY",
+          "secretKey": "WriterSecretKeyChangeInProduction12345678"
+        }
+      ],
+      "actions": [
+        "Admin",
+        "Read",
+        "Write",
+        "List",
+        "Tagging"
+      ]
+    },
+    {
+      "name": "app-readonly",
+      "credentials": [
+        {
+          "accessKey": "BESTACCESSKEY",
+          "secretKey": "WriterSecretKeyChangeInProduction12345678"
+        }
+      ],
+      "actions": [
+        "Read",
+        "List"
+      ]
+    },
+    {
+      "name": "app-writer",
+      "credentials": [
+        {
+          "accessKey": "BESTACCESSKEY",
+          "secretKey": "WriterSecretKeyChangeInProduction12345678"
+        }
+      ],
+      "actions": [
+        "Read",
+        "Write",
+        "List"
+      ]
+    },
+    {
+      "name": "anonymous",
+      "actions": [
+        "Read:public-*"
+      ]
+    }
+  ]
+}

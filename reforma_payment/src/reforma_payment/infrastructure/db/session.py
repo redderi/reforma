@@ -10,13 +10,9 @@ from reforma_payment.infrastructure.config.db_config import (
     DB_USER
 )
 from reforma_common.logger import log_info
-from reforma_common.roles import UserRole
-from reforma_common.user_status import UserStatus
 from sqlalchemy.orm import sessionmaker
 from reforma_payment.infrastructure.db.base import Base 
-from reforma_payment.infrastructure.db.models import UserModel
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy import select
 
 def create_database():
     conn = psycopg2.connect(

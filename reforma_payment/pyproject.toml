@@ -9,8 +9,11 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "aio-pika>=9.5.8",
+    "asyncpg>=0.31.0",
     "dotenv>=0.9.9",
     "fastapi>=0.129.0",
+    "psycopg2>=2.9.11",
+    "sqlalchemy>=2.0.46",
     "uvicorn[standart]>=0.40.0",
 ]
 

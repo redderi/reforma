@@ -10,6 +10,7 @@ requires-python = ">=3.12"
 dependencies = [
     "aio-pika>=9.5.8",
     "asyncpg>=0.31.0",
+    "boto3>=1.42.50",
     "dotenv>=0.9.9",
     "elasticsearch>=9.3.0",
     "fastapi>=0.128.8",

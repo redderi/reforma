@@ -3,7 +3,7 @@ from reforma_survey.infrastructure.repositories.user_profile_repository_impl imp
 from reforma_survey.infrastructure.db.session import SessionLocal
 from reforma_survey.infrastructure.db.models import UserProfileModel
 
-class UserDeletedHandler:
+class DeleteUserProfileHandler:
     async def handle(self, payload: dict):
         user_id = payload.get("user_id")
         if not user_id:

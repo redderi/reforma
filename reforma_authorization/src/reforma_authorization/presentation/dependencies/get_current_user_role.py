@@ -1,6 +1,5 @@
 from fastapi import Depends, HTTPException
 from reforma_authorization.infrastructure.security.jwt_service import JWTService, oauth2_scheme
-import uuid
 
 def get_current_user_role(token: str = Depends(oauth2_scheme)) -> str:
     payload = JWTService().decode_access_token(token)

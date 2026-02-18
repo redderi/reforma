@@ -20,3 +20,5 @@ class UserProfile:
     surveys: List[UUID] = field(default_factory=list)
     templates: List[UUID] = field(default_factory=list)
     reports: List[UUID] = field(default_factory=list)
+
+    # balance: int | None

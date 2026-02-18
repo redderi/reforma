@@ -1,9 +1,10 @@
-# domain/entities/branch.py
 from dataclasses import dataclass
 from uuid import UUID
-from typing import Dict
 
 @dataclass
 class BranchingRule:
+    id: UUID
     question_id: UUID
-    conditions: Dict[str, UUID]  # 'answer_value' -> 'next_question_id'
+    answer_value: str                   # конкретный ответ ("Да", "5", "blue")
+    next_question_id: UUID              # следующий вопрос
+    is_default: bool = False            # fallback-правило

@@ -2,7 +2,7 @@ import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from reforma_payment.presentation.api.payment import router as payment_router
-from reforma_payment.infrastructure.db.session import create_database, create_initial_admin, init_models
+from reforma_payment.infrastructure.db.session import create_database, init_models
 from reforma_payment.presentation.api.payment import event_publisher
 from reforma_common.logger import log_info, log_error
 

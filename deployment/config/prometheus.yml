@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'seaweedfs-master'
+    static_configs:
+      - targets: ['master1:9324', 'master2:9324', 'master3:9324']
+
+  - job_name: 'seaweedfs-volume'
+    static_configs:
+      - targets: ['volume1:9325', 'volume2:9325', 'volume3:9325']
+
+  - job_name: 'seaweedfs-filer'
+    static_configs:
+      - targets: ['filer:9326']
+
+  - job_name: 'seaweedfs-s3'
+    static_configs:
+      - targets: ['s3:9327']

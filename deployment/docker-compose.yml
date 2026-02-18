@@ -1,5 +1,28 @@
+version: '3.9'
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  survey_pgdata:
+  auth_pgdata:
+  payment_pgdata:
+  rabbitmq_data:
+  rabbitmq_log:
+  grafana-data:
+  seaweed_pgdata:
+  master1_data:
+  master2_data:
+  master3_data:
+  volume1_data:
+  volume2_data:
+  volume3_data:
+
 services:
-  # ---------- Authorization Service ----------
+  # ===============================
+  # MICROSERVICES
+  # ===============================
   auth_service:
     build:
       context: ..
@@ -17,7 +40,6 @@ services:
     networks:
       - backend
 
-  # ---------- Mail Service ----------
   mail_service:
     build:
       context: ..
@@ -34,7 +56,6 @@ services:
     networks:
       - backend
 
-  # ---------- Survey Service ----------
   survey_service:
     build:
       context: ..
@@ -49,10 +70,9 @@ services:
       - survey_postgres
       - rabbitmq
       - logstash
+      - nginx_s3
     networks:
       - backend
-
-  # ---------- Payment Service ----------
 
   payment_service:
     build:
@@ -71,7 +91,9 @@ services:
     networks:
       - backend
 
-  # ---------- PostgreSQL auth ----------
+  # ===============================
+  # POSTGRESQL
+  # ===============================
   auth_postgres:
     image: postgres:15
     container_name: postgres_authorization_db
@@ -93,7 +115,6 @@ services:
       retries: 5
       start_period: 5s
 
-  # ---------- PostgreSQL survey ----------
   survey_postgres:
     image: postgres:15
     container_name: postgres_survey_db
@@ -115,7 +136,6 @@ services:
       retries: 5
       start_period: 5s
 
-    # ---------- PostgreSQL payment ----------
   payment_postgres:
     image: postgres:15
     container_name: postgres_payment_db
@@ -137,33 +157,50 @@ services:
       retries: 5
       start_period: 5s
 
-# ---------- RabbitMQ ----------
-  rabbitmq:
-      image: rabbitmq:3-management   
-      container_name: rabbitmq
-      restart: always
-      ports:
-        - "5672:5672"
-        - "15672:15672"
-      environment:
-        RABBITMQ_DEFAULT_USER: guest
-        RABBITMQ_DEFAULT_PASS: guest
-      networks:
-        - backend
-      healthcheck:
-        test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
-        start_period: 30s
-      volumes:
-        - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
-        - rabbitmq_data:/var/lib/rabbitmq
-        - rabbitmq_log:/var/log/rabbitmq
-      mem_limit: 4g          
-      mem_reservation: 1g
+  seaweed_postgres:
+    image: postgres:15
+    container_name: seaweed_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: seaweed
+      POSTGRES_PASSWORD: strong_seaweed_pass
+      POSTGRES_DB: seaweedfs
+    volumes:
+      - seaweed_pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
 
-  # ---------- Elasticsearch ----------
+  # ===============================
+  # RABBITMQ
+  # ===============================
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_log:/var/log/rabbitmq
+    mem_limit: 4g
+    mem_reservation: 1g
+
+  # ===============================
+  # ELK Stack
+  # ===============================
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
     container_name: elasticsearch
@@ -171,11 +208,8 @@ services:
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - xpack.security.transport.ssl.enabled=false
-      - xpack.security.http.ssl.enabled=false
     ports:
       - "9200:9200"
-    mem_limit: 1g
     networks:
       - backend
     healthcheck:
@@ -184,7 +218,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ---------- Kibana ----------
   kibana:
     image: docker.elastic.co/kibana/kibana:8.9.0
     container_name: kibana
@@ -192,14 +225,13 @@ services:
       - elasticsearch
     environment:
       ELASTICSEARCH_HOSTS: "http://elasticsearch:9200"
-      SERVER_BASEPATH: "/kibana"        
-      SERVER_REWRITEBASEPATH: "true"    
+      SERVER_BASEPATH: "/kibana"
+      SERVER_REWRITEBASEPATH: "true"
     ports:
       - "5601:5601"
     networks:
       - backend
 
-  # ---------- Logstash ----------
   logstash:
     image: docker.elastic.co/logstash/logstash:8.9.0
     container_name: logstash
@@ -212,7 +244,9 @@ services:
     networks:
       - backend
 
-  # ---------- reforma_gateway ----------
+  # ===============================
+  # NGINX Gateway
+  # ===============================
   nginx:
     image: nginx:stable-alpine
     container_name: nginx
@@ -231,13 +265,165 @@ services:
     networks:
       - backend
 
-volumes:
-  survey_pgdata:
-  auth_pgdata:
-  payment_pgdata:
-  rabbitmq_data:
-  rabbitmq_log:
+  # ===============================
+  # SEAWEEDFS
+  # ===============================
+  master1:
+    image: chrislusf/seaweedfs:3.68
+    command: >
+      master
+      -ip=master1
+      -ip.bind=0.0.0.0
+      -mdir=/data
+      -peers=master1:9333,master2:9333,master3:9333
+      -defaultReplication=010
+    volumes:
+      - master1_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9333/cluster/status"]
+      interval: 10s
+      retries: 5
 
-networks:
-  backend:
-    driver: bridge
+  master2:
+    image: chrislusf/seaweedfs:3.68
+    command: >
+      master
+      -ip=master2
+      -ip.bind=0.0.0.0
+      -mdir=/data
+      -peers=master1:9333,master2:9333,master3:9333
+      -defaultReplication=010
+    volumes:
+      - master2_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9333/cluster/status"]
+      interval: 10s
+      retries: 5
+
+  master3:
+    image: chrislusf/seaweedfs:3.68
+    command: >
+      master
+      -ip=master3
+      -ip.bind=0.0.0.0
+      -mdir=/data
+      -peers=master1:9333,master2:9333,master3:9333
+      -defaultReplication=010
+    volumes:
+      - master3_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9333/cluster/status"]
+      interval: 10s
+      retries: 5
+
+  volume1:
+    image: chrislusf/seaweedfs:3.68
+    command: >
+      volume
+      -mserver=master1:9333,master2:9333,master3:9333
+      -dir=/data
+      -dataCenter=dc1
+      -rack=rack1
+    volumes:
+      - volume1_data:/data
+    networks:
+      - backend
+
+  volume2:
+    image: chrislusf/seaweedfs:3.68
+    command: >
+      volume
+      -mserver=master1:9333,master2:9333,master3:9333
+      -dir=/data
+      -dataCenter=dc1
+      -rack=rack2
+    volumes:
+      - volume2_data:/data
+    networks:
+      - backend
+
+  volume3:
+    image: chrislusf/seaweedfs:3.68
+    command: >
+      volume
+      -mserver=master1:9333,master2:9333,master3:9333
+      -dir=/data
+      -dataCenter=dc1
+      -rack=rack3
+    volumes:
+      - volume3_data:/data
+    networks:
+      - backend
+
+  seaweed_filer:
+    image: chrislusf/seaweedfs:3.68
+    command: >
+      filer
+      -master=master1:9333,master2:9333,master3:9333
+    volumes:
+      - ./config/filer.toml:/etc/seaweedfs/filer.toml:ro
+    depends_on:
+      - master1
+      - seaweed_postgres
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8888/status"]
+      interval: 10s
+      retries: 5
+
+  seaweed_s3:
+    image: chrislusf/seaweedfs:3.68
+    command: >
+      s3
+      -filer=seaweed_filer:8888
+      -config=/etc/seaweedfs/s3.json
+    volumes:
+      - ./config/s3.json:/etc/seaweedfs/s3.json:ro
+    depends_on:
+      - seaweed_filer
+    networks:
+      - backend
+
+  # nginx_s3:
+  #   image: nginx:stable-alpine
+  #   container_name: nginx_s3
+  #   volumes:
+  #     - ./nginx-s3.conf:/etc/nginx/conf.d/default.conf:ro
+  #   ports:
+  #     - "9000:9000"
+  #   depends_on:
+  #     - seaweed_s3
+  #   networks:
+  #     - backend
+
+  # ===============================
+  # MONITORING
+  # ===============================
+  prometheus:
+    image: prom/prometheus:latest
+    networks:
+      - backend
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    networks:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped

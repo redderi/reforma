@@ -1,12 +1,27 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from uuid import UUID
-from typing import Dict, List
+from typing import List, Optional
+
 
 @dataclass
 class Report:
     id: UUID
     survey_id: UUID
     owner_id: UUID
-    created_at: str
-    summary: Dict = field(default_factory=dict)       # аналитика, например {'question_id': {'option': count}}
-    charts: List[str] = field(default_factory=list)  # ссылки на сгенерированные графики/отчёты
+
+    requested_at: datetime
+
+    report_type: str = "pdf"  # pdf, excel, pptx, json, dashboard...
+
+    status: str = "pending"  # pending, processing, ready, failed
+
+    processing_started_at: Optional[datetime] = None
+
+    completed_at: Optional[datetime] = None
+
+    duration_seconds: Optional[int] = None
+
+    file_urls: List[str] = field(default_factory=list)
+
+    error_message: Optional[str] = None

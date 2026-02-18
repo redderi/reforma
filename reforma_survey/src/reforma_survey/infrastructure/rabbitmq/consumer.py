@@ -8,18 +8,18 @@ from reforma_survey.infrastructure.config.rabbitmq_config import (
     USER_CHANGE_USERNAME_ROUTING_KEY,
     USER_CHANGE_EMAIL_ROUTING_KEY
 )
-from reforma_survey.application.handlers.user_created_handler import UserCreatedHandler
-from reforma_survey.application.handlers.user_delete_handler import UserDeletedHandler
-from reforma_survey.application.handlers.user_change_username_handler import UserChangeUsernameHandler
-from reforma_survey.application.handlers.user_change_email_handler import UserChangeEmailHandler
+from reforma_survey.src.reforma_survey.application.handlers.create_user_profile_handler import CreateUserProfileHandler
+from reforma_survey.src.reforma_survey.application.handlers.delete_user_profile_handler import DeleteUserProfileHandler
+from reforma_survey.src.reforma_survey.application.handlers.change_user_profile_handler import ChangeUserProfileUsernameHandler
+from reforma_survey.src.reforma_survey.application.handlers.change_user_profile_email_handler import ChangeUserProfileEmailHandler
 
 from reforma_common.logger import log_info, log_warning, log_error
 
 HANDLERS = {
-    USER_CREATE_ROUTING_KEY: UserCreatedHandler(),
-    USER_DELETE_ROUTING_KEY: UserDeletedHandler(),
-    USER_CHANGE_USERNAME_ROUTING_KEY: UserChangeUsernameHandler(),
-    USER_CHANGE_EMAIL_ROUTING_KEY: UserChangeEmailHandler(),
+    USER_CREATE_ROUTING_KEY: CreateUserProfileHandler,
+    USER_DELETE_ROUTING_KEY: DeleteUserProfileHandler,
+    USER_CHANGE_USERNAME_ROUTING_KEY: ChangeUserProfileUsernameHandler,
+    USER_CHANGE_EMAIL_ROUTING_KEY: ChangeUserProfileEmailHandler,
 }
 
 class UserConsumer:
