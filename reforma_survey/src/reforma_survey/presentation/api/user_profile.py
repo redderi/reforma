@@ -3,7 +3,7 @@ from reforma_survey.presentation.schemas.user_profile_schema import BioUpdate, B
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from reforma_survey.presentation.dependencies.get_db import get_db
-from reforma_survey.presentation.dependencies.current_user import get_current_user_id
+from reforma_survey.src.reforma_survey.presentation.dependencies.get_current_user_id import get_current_user_id
 from reforma_survey.infrastructure.repositories.user_profile_repository_impl import UserProfileRepositoryImpl
 from reforma_survey.application.user_profile.get_user_profile_by_id_use_case import GetUserProfileByIdUseCase
 from reforma_survey.application.user_profile.update_profile_picture_use_case import UpdateProfilePictureUseCase

@@ -1,10 +1,11 @@
 import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from reforma_payment.presentation.api.payment import router as payment_router
 from reforma_payment.infrastructure.db.session import create_database, init_models
-from reforma_payment.presentation.api.payment import event_publisher
+from reforma_payment.presentation.api.payments import event_publisher
 from reforma_common.logger import log_info, log_error
+from reforma_payment.presentation.api.payments import router as payments_router
+from reforma_payment.presentation.api.webhooks import router as webhooks_router
 
 async def wait_for_rabbitmq(retries: int = 20, delay: int = 10):
     for attempt in range(1, retries + 1):
@@ -23,7 +24,8 @@ async def lifespan(app: FastAPI):
     await init_models()
     await wait_for_rabbitmq()
     yield
-    await event_publisher.close()
 
 app = FastAPI(title="Payment Service", lifespan=lifespan)
-app.include_router(payment_router)
+
+app.include_router(payments_router)
+app.include_router(webhooks_router)

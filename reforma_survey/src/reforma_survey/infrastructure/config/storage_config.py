@@ -1,0 +1,11 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+STORAGE_ENDPOINT = os.getenv("STORAGE_ENDPOINT")
+STORAGE_ACCESS_KEY = os.getenv("STORAGE_ACCESS_KEY")
+STORAGE_SECRET_KEY = os.getenv("STORAGE_SECRET_KEY")
+STORAGE_SIGNATURE_VERSION = os.getenv("STORAGE_SIGNATURE_VERSION", "s3v4")
+STORAGE_REGION_NAME = os.getenv("STORAGE_REGION_NAME")
+STORAGE_BUCKET = os.getenv("STORAGE_BUCKET", "reforma-media")

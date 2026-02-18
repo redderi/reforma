@@ -20,7 +20,6 @@ class UserProfileRepository(ABC):
     async def get_all(self) -> List[UserProfile]:
         pass
 
-
     @abstractmethod
     async def create(self, user: UserProfile) -> UserProfile:
         pass
@@ -56,6 +55,14 @@ class UserProfileRepository(ABC):
         country: str | None,
         city: str | None
     ) -> UserProfile:
+        pass
+
+    @abstractmethod
+    async def update_balance(self, user_id: UUID, balance: int) -> UserProfile:
+        pass
+
+    @abstractmethod
+    async def add_balance(self, user_id: UUID, amount: int) -> UserProfile:
         pass
     
     @abstractmethod

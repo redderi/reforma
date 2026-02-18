@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from reforma_survey.presentation.schemas.report_schema import ReportFileUrlAdd, ReportFileUrlsSet, ReportOut, ReportRequest, ReportStatusUpdate
 from reforma_survey.infrastructure.rabbitmq.publisher import EventPublisher
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,19 +28,27 @@ event_publisher = EventPublisher()
 
 @router.post("/", response_model=ReportOut, status_code=201)
 async def request_report_generation(
-    payload: ReportRequest,
+    payload: ReportRequest = Body(...),
     current_user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db)
 ):
-    log_info(f"Запрос генерации отчёта по опросу {payload.survey_id} от пользователя {current_user_id}", service="survey-service")
+    log_info(
+        f"Запрос генерации отчёта | survey_id={payload.survey_id} | user_id={current_user_id} | type={payload.report_type}",
+        service="survey-service"
+    )
 
     try:
         use_case = RequestReportGenerationUseCase(
             report_repo=ReportRepositoryImpl(db),
             survey_repo=SurveyRepositoryImpl(db),
-            event_publisher= event_publisher  # или через DI
+            event_publisher=EventPublisher()  # или через DI / singleton
         )
-        report = await use_case.execute(payload.survey_id, current_user_id, payload.report_type)
+
+        report = await use_case.execute(
+            survey_id=payload.survey_id,
+            owner_id=current_user_id,
+            report_type=payload.report_type
+        )
 
         return ReportOut(
             id=str(report.id),
@@ -49,18 +57,43 @@ async def request_report_generation(
             requested_at=report.requested_at.isoformat(),
             status=report.status,
             report_type=report.report_type,
-            processing_started_at=report.processing_started_at.isoformat() if report.processing_started_at else None,
+            processing_started_at=(
+                report.processing_started_at.isoformat() if report.processing_started_at else None
+            ),
             completed_at=report.completed_at.isoformat() if report.completed_at else None,
             file_urls=report.file_urls,
-            error_message=report.error_message,
+            error_message=report.error_message
         )
 
-    except ValueError as e:
-        log_warning(f"Ошибка запроса отчёта по опросу {payload.survey_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as ve:
+        log_warning(f"Валидационная ошибка при запросе отчёта {payload.survey_id}: {ve}", service="survey-service")
+        raise HTTPException(status_code=400, detail=str(ve))
+
     except Exception as e:
-        log_error(f"Неожиданная ошибка запроса отчёта по опросу {payload.survey_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            f"Неожиданная ошибка при запросе отчёта по опросу {payload.survey_id}: {e}",
+            service="survey-service",
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Внутренняя ошибка при генерации отчёта")
+    
+    
+@router.get("/{report_id}", response_model=ReportOut)
+async def get_report_status(
+    report_id: UUID,
+    current_user_id: UUID = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
+):
+    use_case = GetReportByIdUseCase(ReportRepositoryImpl(db))
+    report = await use_case.execute(report_id)
+
+    if not report:
+        raise HTTPException(404, "Отчёт не найден")
+
+    if report.owner_id != current_user_id:
+        raise HTTPException(403, "Нет доступа к этому отчёту")
+
+    return ReportOut.from_orm(report)
 
 
 @router.get("/{report_id}", response_model=ReportOut)

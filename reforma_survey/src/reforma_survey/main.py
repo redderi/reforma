@@ -20,10 +20,10 @@ async def wait_for_elasticsearch(retries: int = 20, delay: int = 10):
     for attempt in range(1, retries + 1):
         try:
             if await es_client.ping():
-                log_info("Elasticsearch подключен!", service="mail-service")
+                log_info("Elasticsearch подключен!", service="survey-service")
                 return
         except Exception as e:
-            log_info(f"Elasticsearch недоступен, попытка {attempt}/{retries}: {e}", service="mail-service")
+            log_info(f"Elasticsearch недоступен, попытка {attempt}/{retries}: {e}", service="survey-service")
         await asyncio.sleep(delay)
     await es_client.close()
     raise RuntimeError("Не удалось подключиться к Elasticsearch после нескольких попыток")
@@ -32,10 +32,10 @@ async def wait_for_rabbitmq(retries: int = 20, delay: int = 10):
     for attempt in range(1, retries + 1):
         try:
             await user_consumer.connect()
-            log_info("RabbitMQ подключен!", service="mail-service")
+            log_info("RabbitMQ подключен!", service="survey-service")
             return
         except Exception as e:
-            log_info(f"RabbitMQ недоступен, попытка {attempt}/{retries}: {e}", service="mail-service")
+            log_info(f"RabbitMQ недоступен, попытка {attempt}/{retries}: {e}", service="survey-service")
             await asyncio.sleep(delay)
     raise RuntimeError("Не удалось подключиться к RabbitMQ после нескольких попыток")
 

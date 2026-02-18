@@ -55,7 +55,6 @@ class SurveyRepository(ABC):
     async def delete(self, survey_id: UUID) -> None:
         pass
 
-
     @abstractmethod
     async def add_question(self, survey_id: UUID, question_id: UUID) -> Survey:
         pass

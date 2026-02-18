@@ -1,3 +1,4 @@
+import os
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
@@ -10,6 +11,9 @@ from reforma_payment.infrastructure.config.db_config import (
     DB_USER
 )
 from reforma_common.logger import log_info
+from reforma_payment.infrastructure.repositories.payment_provider_repository_impl import PaymentProviderRepositoryImpl
+from reforma_payment.domain.entities.payment_provider import PaymentProvider
+from reforma_payment.infrastructure.config.stripe_config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 from sqlalchemy.orm import sessionmaker
 from reforma_payment.infrastructure.db.base import Base 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -52,3 +56,21 @@ SessionLocal = sessionmaker(
 async def init_models():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    async with SessionLocal() as session:
+        repo = PaymentProviderRepositoryImpl(session)
+        stripe_provider = await repo.get_active_by_type("stripe")
+        if not stripe_provider:
+            provider = PaymentProvider(
+                name="Stripe",
+                provider_type="stripe",
+                credentials={
+                    "secret_key": STRIPE_SECRET_KEY,
+                    "webhook_secret": STRIPE_WEBHOOK_SECRET
+                },
+                is_active=True
+            )
+            await repo.add(provider)
+            log_info(f"Initial Stripe provider created: {provider.id}", service="payment-service")
+        else:
+            log_info(f"Stripe provider already exists: {stripe_provider.id}", service="payment-service")

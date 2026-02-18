@@ -68,6 +68,7 @@ class UserProfileRepositoryImpl(UserProfileRepository):
             birth_date=profile.birth_date,
             country=profile.country,
             city=profile.city,
+            balance=profile.balance
         )
         self.db.add(model)
         await self.db.flush()
@@ -125,6 +126,18 @@ class UserProfileRepositoryImpl(UserProfileRepository):
         stmt = delete(UserProfileModel).where(UserProfileModel.id == user_id)
         await self.db.execute(stmt)
 
+    async def update_balance(self, user_id: UUID, balance: int) -> UserProfile:
+        model = await self._get_model_or_raise(user_id)
+        model.balance = balance
+        await self.db.flush()
+        return self._to_entity(model)
+
+    async def add_balance(self, user_id: UUID, amount: int) -> UserProfile:
+        model = await self._get_model_or_raise(user_id)
+        model.balance = (model.balance or 0) + amount
+        await self.db.flush()
+        return self._to_entity(model)
+
     async def _get_model_or_raise(self, user_id: UUID) -> UserProfileModel:
         model = await self.db.get(UserProfileModel, user_id)
         if not model:
@@ -154,5 +167,6 @@ class UserProfileRepositoryImpl(UserProfileRepository):
             surveys=surveys,
             templates=templates,
             reports=reports,
+            balance=model.balance
         )
     

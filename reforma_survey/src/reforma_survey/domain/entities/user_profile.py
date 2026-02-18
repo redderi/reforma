@@ -21,4 +21,4 @@ class UserProfile:
     templates: List[UUID] = field(default_factory=list)
     reports: List[UUID] = field(default_factory=list)
 
-    # balance: int | None
+    balance: int = 0
