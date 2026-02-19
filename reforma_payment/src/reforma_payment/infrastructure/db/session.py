@@ -1,4 +1,3 @@
-import os
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
@@ -11,8 +10,6 @@ from reforma_payment.infrastructure.config.db_config import (
     DB_USER
 )
 from reforma_common.logger import log_info
-from reforma_payment.infrastructure.repositories.payment_provider_repository_impl import PaymentProviderRepositoryImpl
-from reforma_payment.domain.entities.payment_provider import PaymentProvider
 from reforma_payment.infrastructure.config.stripe_config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 from sqlalchemy.orm import sessionmaker
 from reforma_payment.infrastructure.db.base import Base 
@@ -54,10 +51,14 @@ SessionLocal = sessionmaker(
 
 
 async def init_models():
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     async with SessionLocal() as session:
+        from reforma_payment.infrastructure.repositories.payment_provider_repository_impl import PaymentProviderRepositoryImpl
+        from reforma_payment.domain.entities.payment_provider import PaymentProvider
+
         repo = PaymentProviderRepositoryImpl(session)
         stripe_provider = await repo.get_active_by_type("stripe")
         if not stripe_provider:

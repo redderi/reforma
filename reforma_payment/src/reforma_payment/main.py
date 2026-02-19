@@ -2,10 +2,10 @@ import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from reforma_payment.infrastructure.db.session import create_database, init_models
-from reforma_payment.presentation.api.payments import event_publisher
+from reforma_payment.presentation.api.payments.webhooks import event_publisher
 from reforma_common.logger import log_info, log_error
-from reforma_payment.presentation.api.payments import router as payments_router
-from reforma_payment.presentation.api.webhooks import router as webhooks_router
+from reforma_payment.presentation.api.payments.payments import router as payments_router
+from reforma_payment.presentation.api.payments.webhooks import router as webhooks_router
 
 async def wait_for_rabbitmq(retries: int = 20, delay: int = 10):
     for attempt in range(1, retries + 1):

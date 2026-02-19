@@ -18,11 +18,11 @@ from reforma_common.logger import log_info, log_warning, log_error
 from reforma_survey.application.handlers.add_balance_handler import AddBalanceHandler
 
 HANDLERS = {
-    USER_CREATE_ROUTING_KEY: CreateUserProfileHandler,
-    USER_DELETE_ROUTING_KEY: DeleteUserProfileHandler,
-    USER_CHANGE_USERNAME_ROUTING_KEY: ChangeUserProfileUsernameHandler,
-    USER_CHANGE_EMAIL_ROUTING_KEY: ChangeUserProfileEmailHandler,
-    ADD_BALANCE_ROUTING_KEY: AddBalanceHandler
+    USER_CREATE_ROUTING_KEY: CreateUserProfileHandler(),
+    USER_DELETE_ROUTING_KEY: DeleteUserProfileHandler(),
+    USER_CHANGE_USERNAME_ROUTING_KEY: ChangeUserProfileUsernameHandler(),
+    USER_CHANGE_EMAIL_ROUTING_KEY: ChangeUserProfileEmailHandler(),
+    ADD_BALANCE_ROUTING_KEY: AddBalanceHandler()
 }
 
 class UserConsumer:

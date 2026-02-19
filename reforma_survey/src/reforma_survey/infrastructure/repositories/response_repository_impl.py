@@ -1,9 +1,9 @@
-from typing import Dict, List, Any
+from typing import Any, Optional, List, Dict
 from uuid import UUID
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, func, distinct
+from sqlalchemy import select, delete, func, distinct, or_
 
 from reforma_survey.domain.entities.response import Response
 from reforma_survey.domain.repositories.response_repository import ResponseRepository
@@ -15,96 +15,135 @@ class ResponseRepositoryImpl(ResponseRepository):
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_id(self, response_id: UUID) -> Response | None:
-        result = await self.db.execute(
-            select(ResponseModel).where(ResponseModel.id == response_id)
-        )
-        model = result.scalar_one_or_none()
-        if not model:
-            return None
-        return self._to_entity(model)
+    async def get_by_id(self, response_id: UUID) -> Optional[Response]:
+        model = await self.db.get(ResponseModel, response_id)
+        return self._to_entity(model) if model else None
 
-    async def get_by_survey(self, survey_id: UUID) -> List[Response]:
-        result = await self.db.execute(
+    async def get_by_survey(
+        self,
+        survey_id: UUID,
+        limit: int = 100,
+        offset: int = 0,
+        include_anonymous: bool = True
+    ) -> List[Response]:
+        stmt = (
             select(ResponseModel)
             .where(ResponseModel.survey_id == survey_id)
-            .order_by(ResponseModel.created_at.desc())
+            .order_by(ResponseModel.submitted_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+
+        if not include_anonymous:
+            stmt = stmt.where(ResponseModel.user_id.isnot(None))
+
+        result = await self.db.execute(stmt)
+        models = result.scalars().all()
+        return [self._to_entity(m) for m in models]
+
+    async def get_by_user_and_survey(
+        self,
+        survey_id: UUID,
+        user_id: Optional[UUID] = None,
+        anonymous_id: Optional[str] = None
+    ) -> Optional[Response]:
+        stmt = select(ResponseModel).where(ResponseModel.survey_id == survey_id)
+
+        if user_id:
+            stmt = stmt.where(ResponseModel.user_id == user_id)
+        elif anonymous_id:
+            stmt = stmt.where(ResponseModel.anonymous_id == anonymous_id)
+        else:
+            return None
+
+        stmt = stmt.order_by(ResponseModel.submitted_at.desc()).limit(1)
+
+        result = await self.db.execute(stmt)
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
+    async def get_latest_by_user(self, user_id: UUID, limit: int = 10) -> List[Response]:
+        result = await self.db.execute(
+            select(ResponseModel)
+            .where(ResponseModel.user_id == user_id)
+            .order_by(ResponseModel.submitted_at.desc())
+            .limit(limit)
         )
         models = result.scalars().all()
         return [self._to_entity(m) for m in models]
 
-    async def get_by_user_and_survey(self, user_id: UUID, survey_id: UUID) -> Response | None:
-        result = await self.db.execute(
-            select(ResponseModel)
-            .where(ResponseModel.user_id == user_id)
-            .where(ResponseModel.survey_id == survey_id)
-            .order_by(ResponseModel.created_at.desc())
-            .limit(1)
-        )
-        model = result.scalar_one_or_none()
-        if not model:
-            return None
-        return self._to_entity(model)
+    async def has_already_responded(
+        self,
+        survey_id: UUID,
+        user_id: Optional[UUID] = None,
+        anonymous_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        fingerprint: Optional[str] = None
+    ) -> bool:
+        if not any([user_id, anonymous_id, ip_address, fingerprint]):
+            return False
 
-    async def get_by_user(self, user_id: UUID) -> List[Response]:
-        result = await self.db.execute(
-            select(ResponseModel)
-            .where(ResponseModel.user_id == user_id)
-            .order_by(ResponseModel.created_at.desc())
-        )
-        models = result.scalars().all()
-        return [self._to_entity(m) for m in models]
+        stmt = select(ResponseModel.id).where(ResponseModel.survey_id == survey_id)
+
+        conditions = []
+        if user_id:
+            conditions.append(ResponseModel.user_id == user_id)
+        if anonymous_id:
+            conditions.append(ResponseModel.anonymous_id == anonymous_id)
+        if ip_address:
+            conditions.append(ResponseModel.ip_address == ip_address)
+        if fingerprint:
+            conditions.append(ResponseModel.fingerprint == fingerprint)
+
+        stmt = stmt.where(or_(*conditions)).limit(1)
+
+        result = await self.db.execute(stmt)
+        return result.scalar() is not None
 
     async def create(self, response: Response) -> Response:
         model = ResponseModel(
             id=response.id,
             survey_id=response.survey_id,
             user_id=response.user_id,
+            anonymous_id=response.anonymous_id,
+            ip_address=response.ip_address,
+            fingerprint=response.fingerprint,
             answers=response.answers,
-            created_at=datetime.utcnow(),
+            submitted_at=response.submitted_at
         )
+
         self.db.add(model)
         await self.db.flush()
         return self._to_entity(model)
 
-    async def update_answers(self, response_id: UUID, new_answers: Dict[UUID, Any]) -> Response:
+    async def update_answers(
+        self,
+        response_id: UUID,
+        new_answers: Dict[UUID, Any]
+    ) -> Response:
         model = await self._get_model_or_raise(response_id)
         model.answers = new_answers
         await self.db.flush()
         return self._to_entity(model)
 
-    async def mark_submitted(self, response_id: UUID, submitted_at: datetime) -> Response:
+    async def mark_submitted(
+        self,
+        response_id: UUID,
+        submitted_at: datetime = None
+    ) -> Response:
         model = await self._get_model_or_raise(response_id)
-        model.submitted_at = submitted_at
+        model.submitted_at = submitted_at or datetime.utcnow()
         await self.db.flush()
         return self._to_entity(model)
 
     async def delete(self, response_id: UUID) -> None:
-        stmt = delete(ResponseModel).where(ResponseModel.id == response_id)
-        await self.db.execute(stmt)
-
-    async def exists(self, response_id: UUID) -> bool:
-        result = await self.db.execute(
-            select(1)
-            .select_from(ResponseModel)
-            .where(ResponseModel.id == response_id)
-            .limit(1)
+        await self.db.execute(
+            delete(ResponseModel).where(ResponseModel.id == response_id)
         )
-        return result.scalar() is not None
 
     async def count_by_survey(self, survey_id: UUID) -> int:
         result = await self.db.execute(
-            select(func.count())
-            .select_from(ResponseModel)
-            .where(ResponseModel.survey_id == survey_id)
-        )
-        return result.scalar() or 0
-
-    async def count_by_user(self, user_id: UUID) -> int:
-        result = await self.db.execute(
-            select(func.count())
-            .select_from(ResponseModel)
-            .where(ResponseModel.user_id == user_id)
+            select(func.count()).where(ResponseModel.survey_id == survey_id)
         )
         return result.scalar() or 0
 
@@ -112,13 +151,28 @@ class ResponseRepositoryImpl(ResponseRepository):
         result = await self.db.execute(
             select(func.count(distinct(ResponseModel.user_id)))
             .where(ResponseModel.survey_id == survey_id)
+            .where(ResponseModel.user_id.isnot(None))
+        )
+        return result.scalar() or 0
+
+    async def count_by_user(self, user_id: UUID) -> int:
+        result = await self.db.execute(
+            select(func.count()).where(ResponseModel.user_id == user_id)
+        )
+        return result.scalar() or 0
+
+    async def count_anonymous_by_survey(self, survey_id: UUID) -> int:
+        result = await self.db.execute(
+            select(func.count())
+            .where(ResponseModel.survey_id == survey_id)
+            .where(ResponseModel.user_id.is_(None))
         )
         return result.scalar() or 0
 
     async def _get_model_or_raise(self, response_id: UUID) -> ResponseModel:
         model = await self.db.get(ResponseModel, response_id)
         if not model:
-            raise ValueError(f"Ответ с id {response_id} не найден")
+            raise ValueError(f"Ответ {response_id} не найден")
         return model
 
     def _to_entity(self, model: ResponseModel) -> Response:
@@ -126,6 +180,9 @@ class ResponseRepositoryImpl(ResponseRepository):
             id=model.id,
             survey_id=model.survey_id,
             user_id=model.user_id,
+            anonymous_id=model.anonymous_id,
+            ip_address=model.ip_address,
+            fingerprint=model.fingerprint,
             answers=model.answers or {},
             submitted_at=model.submitted_at,
         )

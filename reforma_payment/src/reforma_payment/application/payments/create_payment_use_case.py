@@ -1,10 +1,8 @@
-# reforma_payment/application/payments/create_payment_use_case.py
 from reforma_payment.domain.repositories.payment_repository import PaymentRepository
 from reforma_payment.domain.repositories.payment_provider_repository import PaymentProviderRepository
 from reforma_payment.presentation.schemas.create_payment_request_schema import CreatePaymentRequest
 from reforma_common.logger import log_info, log_error
 from reforma_payment.infrastructure.payment_providers.stripe.stripe_client import StripeClient
-# Можно добавить YooKassaClient и других провайдеров
 
 class CreatePaymentUseCase:
     def __init__(self, payment_repo: PaymentRepository, provider_repo: PaymentProviderRepository):
@@ -19,14 +17,14 @@ class CreatePaymentUseCase:
             raise ValueError(f"No active provider for type {request.provider_type}")
 
         # Создаем платеж в базе
-        payment = await self.payment_repo.create_payment(
+        payment = await self.payment_repo.create(
             user_id=request.user_id,
             provider_id=provider.id,
             amount=request.amount,
             currency=request.currency,
             idempotency_key=request.idempotency_key,
             description=request.description,
-            metadata=request.metadata
+            payment_metadata=request.payment_metadata
         )
 
         # Генерируем redirect/client_secret для конкретного провайдера

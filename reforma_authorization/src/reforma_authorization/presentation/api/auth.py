@@ -256,9 +256,15 @@ async def deactivate_me(
     user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db)
 ):
-    use_case = DeactivateUserUseCase(UserRepositoryImpl(db))
-    user = await use_case.execute(user_id)
-    return user.__dict__
+    try:
+        log_info(f"Deactivating user {user_id}", service="auth-service")
+        use_case = DeactivateUserUseCase(UserRepositoryImpl(db))
+        user = await use_case.execute(user_id)
+        log_info(f"User {user_id} deactivated successfully", service="auth-service")
+        return user.__dict__
+    except Exception as e:
+        log_error(f"Unexpected error during user deactivation: {e}", service="auth-service", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/restore")
@@ -266,17 +272,26 @@ async def restore_me(
     data: RestoreRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    repo = UserRepositoryImpl(db)
-    token_repo = EmailTokenRepositoryImpl(db)
-    user = await repo.get_by_email(data.email)
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if user.status != UserStatus.DEACTIVATED:
-        raise HTTPException(status_code=400, detail="User cannot be restored")
+    try:
+        log_info(f"Restore request for email: {data.email}", service="auth-service")
+        repo = UserRepositoryImpl(db)
+        token_repo = EmailTokenRepositoryImpl(db)
+        user = await repo.get_by_email(data.email)
 
-    use_case = RestoreUserUseCase(user_repo=repo, token_repo=token_repo, event_publisher=event_publisher)
-    await use_case.execute(user_id=user.id)
+        if not user:
+            log_error(f"User not found for email: {data.email}", service="auth-service")
+            raise HTTPException(status_code=404, detail="User not found")
 
-    return {"message": "Письмо для восстановления аккаунта отправлено на вашу почту"}
+        if user.status != UserStatus.DEACTIVATED:
+            log_error(f"User {user.id} cannot be restored, status: {user.status}", service="auth-service")
+            raise HTTPException(status_code=400, detail="User cannot be restored")
+
+        use_case = RestoreUserUseCase(user_repo=repo, token_repo=token_repo, event_publisher=event_publisher)
+        await use_case.execute(user_id=user.id)
+
+        log_info(f"Restore email sent for user {user.id}", service="auth-service")
+        return {"message": "Письмо для восстановления аккаунта отправлено на вашу почту"}
+
+    except Exception as e:
+        log_error(f"Unexpected error during user restoration: {e}", service="auth-service", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

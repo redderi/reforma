@@ -134,7 +134,7 @@ async def create_branching_rule(
             raise HTTPException(status_code=404, detail="Вопрос не найден")
 
         rule = BranchingRule(
-            id=UUID(),
+            id=UUID,
             question_id=question_id,
             answer_value=payload.answer_value.strip(),
             next_question_id=payload.next_question_id,

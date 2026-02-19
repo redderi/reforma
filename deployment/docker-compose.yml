@@ -70,7 +70,6 @@ services:
       - survey_postgres
       - rabbitmq
       - logstash
-      - nginx_s3
     networks:
       - backend
 

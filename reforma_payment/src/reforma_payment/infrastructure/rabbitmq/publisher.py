@@ -1,5 +1,3 @@
-import asyncio
-import json
 from reforma_payment.infrastructure.rabbitmq.connection import RabbitMQConnection
 from reforma_common.logger import log_info, log_error
 
@@ -37,7 +35,7 @@ class EventPublisher:
             await self.rabbit.publish(exchange_name, routing, message)
             log_info("[Publisher] Event sent successfully", service="payment-service")
         except Exception as e:
-            log_error(f"[Publisher] Event publish failed: {e}", exc_info=True)
+            log_error(f"[Publisher] Event publish failed: {e}")
 
     async def close(self):
         if self._connected:

@@ -12,4 +12,4 @@ class UpdateProfilePictureUseCase:
         async with SessionLocal() as db:
             async with db.begin():
                 updated = await self.repository.update_profile_picture(user_id, picture_url)
-                return updated
+            return updated

@@ -9,7 +9,7 @@ from reforma_survey.infrastructure.config.jwt_config import (
     JWT_ALGORITHM,
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 def decode_access_token(token: str) -> dict | None:
     try:

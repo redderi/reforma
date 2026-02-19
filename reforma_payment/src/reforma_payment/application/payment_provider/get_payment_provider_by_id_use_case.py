@@ -1,6 +1,6 @@
 from uuid import UUID
 from reforma_payment.domain.entities.payment_provider import PaymentProvider
-from reforma_payment.src.reforma_payment.domain.repositories.payment_provider_repository import PaymentProviderRepository
+from reforma_payment.domain.repositories.payment_provider_repository import PaymentProviderRepository
 from reforma_payment.infrastructure.db.session import SessionLocal
 from reforma_common.logger import log_info, log_warning, log_error
 

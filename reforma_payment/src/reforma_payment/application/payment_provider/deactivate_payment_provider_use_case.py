@@ -1,4 +1,3 @@
-# reforma_payment/domain/usecases/deactivate_payment_provider.py
 from uuid import UUID
 from reforma_payment.domain.repositories.payment_provider_repository import PaymentProviderRepository
 from reforma_payment.infrastructure.db.session import SessionLocal

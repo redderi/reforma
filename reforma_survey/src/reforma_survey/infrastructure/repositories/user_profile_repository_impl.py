@@ -24,6 +24,7 @@ class UserProfileRepositoryImpl(UserProfileRepository):
                 selectinload(UserProfileModel.surveys),
                 selectinload(UserProfileModel.templates),
                 selectinload(UserProfileModel.reports),
+                selectinload(UserProfileModel.responses),
             )
         )
         model = result.scalar_one_or_none()
@@ -39,6 +40,7 @@ class UserProfileRepositoryImpl(UserProfileRepository):
                 selectinload(UserProfileModel.surveys),
                 selectinload(UserProfileModel.templates),
                 selectinload(UserProfileModel.reports),
+                selectinload(UserProfileModel.responses),
             )
         )
         model = result.scalar_one_or_none()
@@ -52,6 +54,7 @@ class UserProfileRepositoryImpl(UserProfileRepository):
                 selectinload(UserProfileModel.surveys),
                 selectinload(UserProfileModel.templates),
                 selectinload(UserProfileModel.reports),
+                selectinload(UserProfileModel.responses),
             )
         )
         models = result.scalars().all()
@@ -78,36 +81,42 @@ class UserProfileRepositoryImpl(UserProfileRepository):
         model = await self._get_model_or_raise(user_id)
         model.username = new_username
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)  
 
     async def update_email(self, user_id: UUID, new_email: str) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.email = new_email
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_profile_picture(self, user_id: UUID, picture_url: str | None) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.profile_picture = picture_url
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_bio(self, user_id: UUID, bio: str | None) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.bio = bio
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_gender(self, user_id: UUID, gender: str | None) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.gender = gender
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_birth_date(self, user_id: UUID, birth_date: date | None) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.birth_date = birth_date
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_location(
@@ -120,6 +129,7 @@ class UserProfileRepositoryImpl(UserProfileRepository):
         model.country = country
         model.city = city
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def delete(self, user_id: UUID) -> None:
@@ -130,12 +140,14 @@ class UserProfileRepositoryImpl(UserProfileRepository):
         model = await self._get_model_or_raise(user_id)
         model.balance = balance
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def add_balance(self, user_id: UUID, amount: int) -> UserProfile:
         model = await self._get_model_or_raise(user_id)
         model.balance = (model.balance or 0) + amount
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def _get_model_or_raise(self, user_id: UUID) -> UserProfileModel:
@@ -148,11 +160,13 @@ class UserProfileRepositoryImpl(UserProfileRepository):
         surveys = []
         templates = []
         reports = []
+        responses = []
 
         if load_collections:
             surveys = [s.id for s in model.surveys]
             templates = [t.id for t in model.templates]
             reports = [r.id for r in model.reports]
+            responses = [r.id for r in model.responses]
 
         return UserProfile(
             id=model.id,
@@ -167,6 +181,7 @@ class UserProfileRepositoryImpl(UserProfileRepository):
             surveys=surveys,
             templates=templates,
             reports=reports,
+            responses=responses,
             balance=model.balance
         )
     

@@ -1,14 +1,13 @@
-# reforma_survey/infrastructure/db/models.py
-
 import uuid
 from datetime import datetime, date
 
 from sqlalchemy import (
-    Column, String, Text, JSON, DateTime, Integer, ForeignKey, Boolean,
-    Date
+    String, Text, JSON, DateTime, Integer, ForeignKey, Boolean,
+    Date, Index, desc
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
-from sqlalchemy.orm import relationship, Mapped, mapped_column, Index
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from reforma_survey.infrastructure.db.base import Base
 
@@ -26,6 +25,7 @@ class UserProfileModel(Base):
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     country: Mapped[str | None] = mapped_column(String, nullable=True)
     city: Mapped[str | None] = mapped_column(String, nullable=True)
+    balance: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     surveys: Mapped[list["SurveyModel"]] = relationship(
         "SurveyModel", back_populates="owner", cascade="all, delete-orphan"
@@ -35,6 +35,13 @@ class UserProfileModel(Base):
     )
     reports: Mapped[list["ReportModel"]] = relationship(
         "ReportModel", back_populates="owner", cascade="all, delete-orphan"
+    )
+
+    responses: Mapped[list["ResponseModel"]] = relationship(
+        "ResponseModel",
+        back_populates="user",
+        foreign_keys="ResponseModel.user_id",
+        # cascade="all, delete-orphan"  
     )
 
 
@@ -107,15 +114,30 @@ class BranchingRuleModel(Base):
 
 
 class ResponseModel(Base):
-    __tablename__ = "response"
+    __tablename__ = "response" 
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    survey_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("survey.id"))
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
-    answers: Mapped[dict] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    survey_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("survey.id"), nullable=False, index=True)
+    
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("user_profile.id"), nullable=True, index=True)
+    
+    anonymous_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True, index=True)
+    fingerprint: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)
+    user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    
+    answers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
     survey: Mapped["SurveyModel"] = relationship("SurveyModel", back_populates="responses")
+    user: Mapped["UserProfileModel"] = relationship("UserProfileModel", back_populates="responses", foreign_keys=[user_id])
+
+    __table_args__ = (
+        Index("ix_response_survey_user", "survey_id", "user_id"),
+        Index("ix_response_survey_anon", "survey_id", "anonymous_id"),
+        Index("ix_response_survey_ip", "survey_id", "ip_address"),
+    )
 
 
 class ReportModel(Base):
@@ -132,11 +154,18 @@ class ReportModel(Base):
     file_urls: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
     error_message: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    survey: Mapped["SurveyModel"] = relationship("SurveyModel", back_populates="reports", cascade="all, delete-orphan")
-    owner: Mapped["UserProfileModel"] = relationship("UserProfileModel", back_populates="reports", cascade="all, delete-orphan")
+    survey: Mapped["SurveyModel"] = relationship(
+        "SurveyModel",
+        back_populates="reports"
+    )
+    
+    owner: Mapped["UserProfileModel"] = relationship(
+        "UserProfileModel",
+        back_populates="reports"
+    )
 
     __table_args__ = (
         Index('ix_reports_survey_status', 'survey_id', 'status'),
         Index('ix_reports_owner_status', 'owner_id', 'status'),
-        Index('ix_reports_requested_at', 'requested_at desc'), 
+        Index('ix_reports_requested_at', desc('requested_at')),
     )

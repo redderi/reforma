@@ -1,4 +1,3 @@
-# reforma_payment/infrastructure/repositories/payment_provider_repo.py
 from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession

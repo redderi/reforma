@@ -16,4 +16,4 @@ class UpdateGenderUseCase:
         async with SessionLocal() as db:
             async with db.begin():
                 updated = await self.repository.update_gender(user_id, gender)
-                return updated
+            return updated

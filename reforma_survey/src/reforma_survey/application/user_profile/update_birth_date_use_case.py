@@ -13,4 +13,4 @@ class UpdateBirthDateUseCase:
         async with SessionLocal() as db:
             async with db.begin():
                 updated = await self.repository.update_birth_date(user_id, birth_date)
-                return updated
+            return updated

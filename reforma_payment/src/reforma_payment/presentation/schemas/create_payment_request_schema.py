@@ -9,5 +9,5 @@ class CreatePaymentRequest(BaseModel):
     currency: str = "RUB"
     idempotency_key: str | None = None
     description: str | None = None
-    metadata: Dict[str, str] | None = None
+    payment_metadata: Dict[str, str] | None = None
     provider_type: str

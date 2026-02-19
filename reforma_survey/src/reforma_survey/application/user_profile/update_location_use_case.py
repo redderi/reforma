@@ -17,4 +17,4 @@ class UpdateLocationUseCase:
         async with SessionLocal() as db:
             async with db.begin():
                 updated = await self.repository.update_location(user_id, country, city)
-                return updated
+            return updated

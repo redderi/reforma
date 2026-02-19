@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from uuid import UUID, uuid4
 import httpx
 
 from reforma_survey.presentation.dependencies import get_current_user_id, get_db
 from reforma_survey.infrastructure.repositories.user_profile_repository_impl import UserProfileRepositoryImpl
-from reforma_survey.src.reforma_survey.presentation.schemas.balance_schema import TopUpRequest
+from reforma_survey.presentation.schemas.balance_schema import TopUpRequest
 
 router = APIRouter(prefix="/balance", tags=["Balance"])
 

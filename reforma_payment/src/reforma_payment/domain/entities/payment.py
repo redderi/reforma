@@ -17,7 +17,7 @@ class Payment:
     status: PaymentStatus = PaymentStatus.PENDING
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    payment_metadata: Dict[str, Any] = field(default_factory=dict)
     external_id: Optional[str] = None
     client_secret: Optional[str] = None
 

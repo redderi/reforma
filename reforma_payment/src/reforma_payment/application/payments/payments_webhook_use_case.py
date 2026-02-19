@@ -62,7 +62,7 @@ class PaymentWebhookUseCase:
                         "amount": payment.amount,
                         "currency": payment.currency,
                         "payment_id": str(payment.id),
-                        "metadata": payment.metadata
+                        "payment_metadata": payment.payment_metadata
                     }
                 )
             else:

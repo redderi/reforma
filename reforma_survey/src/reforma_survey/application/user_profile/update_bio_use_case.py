@@ -11,4 +11,4 @@ class UpdateBioUseCase:
         async with SessionLocal() as db:
             async with db.begin():
                 updated = await self.repository.update_bio(user_id, bio)
-                return updated
+            return updated

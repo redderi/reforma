@@ -74,11 +74,9 @@ class PaymentRepositoryImpl(PaymentRepository):
             status=payment.status,
             created_at=payment.created_at,
             updated_at=payment.updated_at,
-            metadata=payment.metadata,
-            description=payment.description,
+            payment_metadata=payment.payment_metadata,
             idempotency_key=payment.idempotency_key,
             external_id=payment.external_id,
-            redirect_url=payment.redirect_url,
             client_secret=payment.client_secret,
         )
         self.db.add(model)
@@ -170,10 +168,8 @@ class PaymentRepositoryImpl(PaymentRepository):
             status=model.status,
             created_at=model.created_at,
             updated_at=model.updated_at,
-            metadata=model.metadata,
-            description=model.description,
+            payment_metadata=model.payment_metadata,
             idempotency_key=model.idempotency_key,
             external_id=model.external_id,
-            redirect_url=model.redirect_url,
             client_secret=model.client_secret,
         )
