@@ -7,4 +7,4 @@ class SoftDeleteUserByIdUseCase:
         self.user_repo = user_repo
 
     async def execute(self, user_id: UUID):
-        await self.user_repo.delete_by_id(user_id)
+        return await self.user_repo.delete_by_id(user_id)

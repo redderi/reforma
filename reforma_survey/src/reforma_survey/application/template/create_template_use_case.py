@@ -1,10 +1,8 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import Dict, Any
-
 from reforma_survey.domain.entities.template import Template
 from reforma_survey.domain.repositories.template_repository import TemplateRepository
 from reforma_survey.infrastructure.db.session import SessionLocal
-from reforma_common.logger import log_info, log_error
 
 
 class CreateTemplateUseCase:
@@ -12,13 +10,11 @@ class CreateTemplateUseCase:
         self.repository = repository
 
     async def execute(self, data: Dict[str, Any], owner_id: UUID) -> Template:
-        log_info(f"Начало создания шаблона для владельца {owner_id}, name={data.get('name')}", service="survey-service")
-
         async with SessionLocal() as db:
             async with db.begin():
                 try:
                     template = Template(
-                        id=UUID(),
+                        id=uuid4(),
                         owner_id=owner_id,
                         name=data.get("name", "").strip(),
                         description=data.get("description"),
@@ -28,16 +24,10 @@ class CreateTemplateUseCase:
                     )
 
                     if not template.name:
-                        raise ValueError("Название шаблона обязательно")
-
+                        raise ValueError("Template name is required")
                     created = await self.repository.create(template)
-
-                    log_info(f"Шаблон успешно создан: id={created.id}, name={created.name}", service="survey-service")
                     return created
-
-                except ValueError as ve:
-                    log_error(f"Ошибка валидации при создании шаблона: {ve}", service="survey-service")
+                except ValueError:
                     raise
-                except Exception as e:
-                    log_error(f"Неожиданная ошибка при создании шаблона: {e}", service="survey-service")
+                except Exception:
                     raise

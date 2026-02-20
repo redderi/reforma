@@ -1,28 +1,22 @@
-# reforma_survey/infrastructure/repositories/survey_repository_impl.py
-
-from typing import Optional, List
+from typing import List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, func
 from sqlalchemy.orm import selectinload
-
 from reforma_survey.domain.entities.survey import Survey
 from reforma_survey.domain.repositories.survey_repository import SurveyRepository
 from reforma_survey.infrastructure.db.models import SurveyModel, QuestionModel
 
 
 class SurveyRepositoryImpl(SurveyRepository):
-
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_id(self, survey_id: UUID) -> Optional[Survey]:
+    async def get_by_id(self, survey_id: UUID) -> Survey | None:
         result = await self.db.execute(
             select(SurveyModel)
             .where(SurveyModel.id == survey_id)
-            .options(
-                selectinload(SurveyModel.questions)
-            )
+            .options(selectinload(SurveyModel.questions))
         )
         model = result.scalar_one_or_none()
         if not model:
@@ -71,31 +65,38 @@ class SurveyRepositoryImpl(SurveyRepository):
             published=survey.published,
         )
         self.db.add(model)
-        await self.db.flush() 
+        await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_title(self, survey_id: UUID, new_title: str) -> Survey:
         model = await self._get_model_or_raise(survey_id)
         model.title = new_title.strip()
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
-    async def update_description(self, survey_id: UUID, description: str | None) -> Survey:
+    async def update_description(
+        self, survey_id: UUID, description: str | None
+    ) -> Survey:
         model = await self._get_model_or_raise(survey_id)
         model.description = description
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_settings(self, survey_id: UUID, settings: dict) -> Survey:
         model = await self._get_model_or_raise(survey_id)
         model.settings = settings
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def set_template(self, survey_id: UUID, template_id: UUID | None) -> Survey:
         model = await self._get_model_or_raise(survey_id)
         model.template_id = template_id
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def publish(self, survey_id: UUID) -> Survey:
@@ -104,6 +105,7 @@ class SurveyRepositoryImpl(SurveyRepository):
             raise ValueError("Опрос уже опубликован")
         model.published = True
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def unpublish(self, survey_id: UUID) -> Survey:
@@ -112,13 +114,14 @@ class SurveyRepositoryImpl(SurveyRepository):
             raise ValueError("Опрос не опубликован")
         model.published = False
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
-
 
     async def delete(self, survey_id: UUID) -> None:
         stmt = delete(SurveyModel).where(SurveyModel.id == survey_id)
         await self.db.execute(stmt)
-
+        await self.db.flush()
+        await self.db.commit()
 
     async def add_question(self, survey_id: UUID, question_id: UUID) -> Survey:
 
@@ -141,6 +144,7 @@ class SurveyRepositoryImpl(SurveyRepository):
             raise RuntimeError(f"Не удалось привязать вопрос {question_id}")
 
         await self.db.flush()
+        await self.db.commit()
         return await self.get_by_id(survey_id)
 
     async def remove_question(self, survey_id: UUID, question_id: UUID) -> Survey:
@@ -158,17 +162,15 @@ class SurveyRepositoryImpl(SurveyRepository):
             )
 
         await self.db.flush()
+        await self.db.commit()
         return await self.get_by_id(survey_id)
 
     async def reorder_questions(
-        self,
-        survey_id: UUID,
-        question_ids: List[UUID]
+        self, survey_id: UUID, question_ids: List[UUID]
     ) -> Survey:
 
         result = await self.db.execute(
-            select(QuestionModel.id)
-            .where(QuestionModel.survey_id == survey_id)
+            select(QuestionModel.id).where(QuestionModel.survey_id == survey_id)
         )
         existing_ids = {row[0] for row in result.fetchall()}
 
@@ -187,6 +189,7 @@ class SurveyRepositoryImpl(SurveyRepository):
             )
 
         await self.db.flush()
+        await self.db.commit()
         return await self.get_by_id(survey_id)
 
     async def exists(self, survey_id: UUID) -> bool:
@@ -215,10 +218,7 @@ class SurveyRepositoryImpl(SurveyRepository):
     def _to_entity(self, model: SurveyModel, load_questions: bool = False) -> Survey:
         questions_ids = []
         if load_questions and model.questions is not None:
-            sorted_questions = sorted(
-                model.questions,
-                key=lambda q: q.order
-            )
+            sorted_questions = sorted(model.questions, key=lambda q: q.order)
             questions_ids = [q.id for q in sorted_questions]
 
         return Survey(

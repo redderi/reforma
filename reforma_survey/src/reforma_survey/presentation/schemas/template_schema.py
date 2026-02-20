@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List
 from pydantic import BaseModel, Field
 
 
@@ -6,7 +6,7 @@ class TemplateOut(BaseModel):
     id: str
     owner_id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     survey_style: Dict = {}
     question_style: Dict = {}
     assets: List[str] = []
@@ -14,10 +14,10 @@ class TemplateOut(BaseModel):
 
 class TemplateCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    description: Optional[str] = None
-    survey_style: Optional[Dict] = None
-    question_style: Optional[Dict] = None
-    assets: Optional[List[str]] = None
+    description: str | None = None
+    survey_style: Dict | None = None
+    question_style: Dict | None = None
+    assets: List[str] | None = None
 
 
 class TemplateNameUpdate(BaseModel):
@@ -25,7 +25,7 @@ class TemplateNameUpdate(BaseModel):
 
 
 class TemplateDescriptionUpdate(BaseModel):
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class TemplateSurveyStyleUpdate(BaseModel):

@@ -1,38 +1,38 @@
 [project]
-name = "reforma-authorization"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
 authors = [
-    { name = "redderi", email = "vrudko22@gmail.com" }
+  {name = "redderi", email = "vrudko22@gmail.com"},
 ]
-requires-python = ">=3.12,<4.0"
 dependencies = [
-    "aio-pika>=9.5.8",
-    "aiohttp>=3.13.3",
-    "asyncpg>=0.31.0",
-    "bcrypt==4.0.1",
-    "elasticsearch>=9.3.0",
-    "fastapi>=0.128.0",
-    "logstash-formatter>=0.5.17",
-    "passlib[bcrypt]>=1.7.4",
-    "psycopg2-binary>=2.9.11",
-    "pydantic[email]>=2.12.5",
-    "python-dotenv>=1.2.1",
-    "python-jose>=3.5.0",
-    "sqlalchemy>=2.0.45",
-    "structlog>=25.5.0",
-    "uvicorn>=0.40.0",
+  "aio-pika>=9.5.8",
+  "aiohttp>=3.13.3",
+  "asyncpg>=0.31.0",
+  "bcrypt==4.0.1",
+  "elasticsearch>=9.3.0",
+  "fastapi>=0.128.0",
+  "logstash-formatter>=0.5.17",
+  "passlib[bcrypt]>=1.7.4",
+  "psycopg2-binary>=2.9.11",
+  "pydantic[email]>=2.12.5",
+  "python-dotenv>=1.2.1",
+  "python-jose>=3.5.0",
+  "sqlalchemy>=2.0.45",
+  "structlog>=25.5.0",
+  "uvicorn>=0.40.0",
 ]
+description = "Add your description here"
+name = "reforma-authorization"
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+version = "0.1.0"
 
 [project.scripts]
 reforma-authorization = "reforma_authorization:main"
 
 [build-system]
-requires = ["uv_build>=0.8.4,<0.9.0"]
 build-backend = "uv_build"
+requires = ["uv_build>=0.8.4,<0.9.0"]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.14.14",
+  "ruff>=0.14.14",
 ]

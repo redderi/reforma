@@ -1,27 +1,28 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Optional, List
+from typing import List
 from uuid import UUID
 
 from reforma_payment.domain.entities.payment import Payment
 
 
 class PaymentRepository(ABC):
-    
     @abstractmethod
-    async def get_by_id(self, payment_id: UUID) -> Optional[Payment]:
+    async def get_by_id(self, payment_id: UUID) -> Payment | None:
         pass
 
     @abstractmethod
-    async def get_by_external_id(self, external_id: str) -> Optional[Payment]:
+    async def get_by_external_id(self, external_id: str) -> Payment | None:
         pass
 
     @abstractmethod
-    async def find_by_idempotency(self, idempotency_key: str) -> Optional[Payment]:
+    async def find_by_idempotency(self, idempotency_key: str) -> Payment | None:
         pass
 
     @abstractmethod
-    async def get_by_user(self, user_id: UUID, limit: int = 20, offset: int = 0) -> List[Payment]:
+    async def get_by_user(
+        self, user_id: UUID, limit: int = 20, offset: int = 0
+    ) -> List[Payment]:
         pass
 
     @abstractmethod
@@ -37,19 +38,16 @@ class PaymentRepository(ABC):
         self,
         payment_id: UUID,
         new_status: str,
-        external_id: Optional[str] = None,
-        redirect_url: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        updated_at: Optional[datetime] = None
+        external_id: str | None = None,
+        redirect_url: str | None = None,
+        client_secret: str | None = None,
+        updated_at: datetime | None = None,
     ) -> Payment:
         pass
 
     @abstractmethod
     async def mark_as_succeeded(
-        self,
-        payment_id: UUID,
-        external_id: str,
-        completed_at: datetime
+        self, payment_id: UUID, external_id: str, completed_at: datetime
     ) -> Payment:
         pass
 
@@ -57,11 +55,10 @@ class PaymentRepository(ABC):
     async def mark_as_failed(
         self,
         payment_id: UUID,
-        error_message: Optional[str] = None,
-        completed_at: datetime | None = None
+        error_message: str | None = None,
+        completed_at: datetime | None = None,
     ) -> Payment:
         pass
-
 
     @abstractmethod
     async def exists(self, payment_id: UUID) -> bool:

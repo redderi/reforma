@@ -1,12 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List
 from uuid import UUID
-
 from reforma_survey.domain.entities.survey import Survey
 
 
 class SurveyRepository(ABC):
-
     @abstractmethod
     async def get_by_id(self, survey_id: UUID) -> Survey | None:
         pass
@@ -32,7 +30,9 @@ class SurveyRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_description(self, survey_id: UUID, description: str | None) -> Survey:
+    async def update_description(
+        self, survey_id: UUID, description: str | None
+    ) -> Survey:
         pass
 
     @abstractmethod
@@ -65,9 +65,7 @@ class SurveyRepository(ABC):
 
     @abstractmethod
     async def reorder_questions(
-        self,
-        survey_id: UUID,
-        question_ids: List[UUID]
+        self, survey_id: UUID, question_ids: List[UUID]
     ) -> Survey:
         pass
 

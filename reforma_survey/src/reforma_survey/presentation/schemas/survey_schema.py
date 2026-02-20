@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Dict, Optional, List
+from typing import Dict, List
 from pydantic import BaseModel, Field
 
 
@@ -7,18 +7,18 @@ class SurveyOut(BaseModel):
     id: str
     owner_id: str
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     published: bool = False
     questions: List[str] = []
     settings: Dict = {}
-    template_id: Optional[str] = None
+    template_id: str | None  = None
 
 
 class SurveyCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
-    description: Optional[str] = None
-    settings: Optional[Dict] = None
-    template_id: Optional[UUID] = None
+    description: str | None  = None
+    settings: Dict | None  = None
+    template_id: UUID | None  = None
 
 
 class SurveyTitleUpdate(BaseModel):
@@ -26,7 +26,7 @@ class SurveyTitleUpdate(BaseModel):
 
 
 class SurveyDescriptionUpdate(BaseModel):
-    description: Optional[str] = None
+    description: str | None  = None
 
 
 class SurveySettingsUpdate(BaseModel):
@@ -34,7 +34,7 @@ class SurveySettingsUpdate(BaseModel):
 
 
 class SurveyTemplateUpdate(BaseModel):
-    template_id: Optional[UUID] = None
+    template_id: UUID | None  = None
 
 
 class AddQuestionRequest(BaseModel):

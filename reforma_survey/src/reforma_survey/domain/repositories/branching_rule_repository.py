@@ -1,12 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List
 from uuid import UUID
-
 from reforma_survey.domain.entities.branching_rule import BranchingRule
 
 
 class BranchingRuleRepository(ABC):
-
     @abstractmethod
     async def get_by_id(self, rule_id: UUID) -> BranchingRule | None:
         pass
@@ -25,24 +23,21 @@ class BranchingRuleRepository(ABC):
 
     @abstractmethod
     async def update_answer_value(
-        self,
-        rule_id: UUID,
-        new_answer_value: str
+        self, rule_id: UUID, new_answer_value: str
     ) -> BranchingRule:
         pass
 
     @abstractmethod
     async def update_next_question(
-        self,
-        rule_id: UUID,
-        new_next_question_id: UUID
+        self, rule_id: UUID, new_next_question_id: UUID
     ) -> BranchingRule:
         pass
 
     @abstractmethod
-    async def set_default(self, rule_id: UUID, is_default: bool = True) -> BranchingRule:
+    async def set_default(
+        self, rule_id: UUID, is_default: bool = True
+    ) -> BranchingRule:
         pass
-
 
     @abstractmethod
     async def delete(self, rule_id: UUID) -> None:

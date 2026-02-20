@@ -1,12 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List
 from uuid import UUID
-
 from reforma_survey.domain.entities.question import Question
 
 
 class QuestionRepository(ABC):
-
     @abstractmethod
     async def get_by_id(self, question_id: UUID) -> Question | None:
         pass

@@ -1,10 +1,8 @@
 from uuid import UUID
 from datetime import datetime
-
 from reforma_survey.domain.entities.report import Report
 from reforma_survey.domain.repositories.report_repository import ReportRepository
 from reforma_survey.infrastructure.db.session import SessionLocal
-from reforma_common.logger import log_info, log_error
 
 
 class UpdateReportStatusUseCase:
@@ -17,10 +15,8 @@ class UpdateReportStatusUseCase:
         new_status: str,
         processing_started_at: datetime | None = None,
         completed_at: datetime | None = None,
-        error_message: str | None = None
+        error_message: str | None = None,
     ) -> Report:
-        log_info(f"Обновление статуса отчёта {report_id} → {new_status}", service="survey-service")
-
         async with SessionLocal() as db:
             async with db.begin():
                 try:
@@ -29,10 +25,8 @@ class UpdateReportStatusUseCase:
                         new_status,
                         processing_started_at,
                         completed_at,
-                        error_message
+                        error_message,
                     )
-                    log_info(f"Статус отчёта {report_id} обновлён на {new_status}", service="survey-service")
                     return updated
-                except Exception as e:
-                    log_error(f"Ошибка обновления статуса отчёта {report_id}: {e}", service="survey-service")
+                except Exception:
                     raise

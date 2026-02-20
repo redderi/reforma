@@ -25,13 +25,13 @@ class UserRepositoryImpl(UserRepository):
             deleted_at=model.deleted_at,
             suspended_at=model.suspended_at,
             suspension_reason=model.suspension_reason,
-            suspended_by=model.suspended_by
+            suspended_by=model.suspended_by,
         )
 
     async def get_by_id(self, id: UUID) -> User | None:
         stmt = select(UserModel).where(
             UserModel.id == id,
-            #UserModel.deleted_at.is_(None)
+            # UserModel.deleted_at.is_(None)
         )
         result = await self.db.execute(stmt)
         model = result.scalar_one_or_none()
@@ -40,7 +40,7 @@ class UserRepositoryImpl(UserRepository):
     async def get_by_username(self, username: str) -> User | None:
         stmt = select(UserModel).where(
             UserModel.username == username,
-           # UserModel.deleted_at.is_(None)
+            # UserModel.deleted_at.is_(None)
         )
         result = await self.db.execute(stmt)
         model = result.scalar_one_or_none()
@@ -49,7 +49,7 @@ class UserRepositoryImpl(UserRepository):
     async def get_by_email(self, email: str) -> User | None:
         stmt = select(UserModel).where(
             UserModel.email == email,
-            #UserModel.deleted_at.is_(None)
+            # UserModel.deleted_at.is_(None)
         )
         result = await self.db.execute(stmt)
         model = result.scalar_one_or_none()
@@ -63,7 +63,7 @@ class UserRepositoryImpl(UserRepository):
             password_hash=user.password_hash,
             role=user.role,
             is_email_verified=user.is_email_verified,
-            status=user.status
+            status=user.status,
         )
         self.db.add(model)
         await self.db.commit()
@@ -100,9 +100,7 @@ class UserRepositoryImpl(UserRepository):
         await self.db.refresh(model)
         return self._to_entity(model)
 
-    # ----------------- Soft Delete -----------------
     async def delete(self, user: User) -> None:
-        """Soft delete по объекту User"""
         model = await self.db.get(UserModel, user.id)
         if not model:
             raise ValueError("User not found")
@@ -118,7 +116,6 @@ class UserRepositoryImpl(UserRepository):
         model.status = UserStatus.DELETED
         await self.db.commit()
 
-    # ----------------- Hard Delete -----------------
     async def hard_delete(self, user: User) -> None:
         model = await self.db.get(UserModel, user.id)
         if not model:
@@ -141,7 +138,6 @@ class UserRepositoryImpl(UserRepository):
         model.is_email_verified = True
         if model.status == UserStatus.REGISTERED:
             model.status = UserStatus.ACTIVE
-
         await self.db.commit()
         await self.db.refresh(model)
 
@@ -149,7 +145,6 @@ class UserRepositoryImpl(UserRepository):
         model = await self.db.get(UserModel, user.id)
         if not model:
             raise ValueError("User not found")
-
         model.username = user.username
         model.email = user.email
         model.password_hash = user.password_hash
@@ -160,7 +155,6 @@ class UserRepositoryImpl(UserRepository):
         model.suspension_reason = user.suspension_reason
         model.suspended_by = user.suspended_by
         model.deleted_at = user.deleted_at
-
         await self.db.commit()
         await self.db.refresh(model)
         return self._to_entity(model)
@@ -169,7 +163,7 @@ class UserRepositoryImpl(UserRepository):
         stmt = select(UserModel)
         if not include_deleted:
             pass
-            #stmt = stmt.where(UserModel.deleted_at.is_(None))
+            # stmt = stmt.where(UserModel.deleted_at.is_(None))
 
         result = await self.db.execute(stmt)
         models = result.scalars().all()
@@ -177,8 +171,7 @@ class UserRepositoryImpl(UserRepository):
 
     async def get_by_status(self, status: UserStatus) -> list[User]:
         stmt = select(UserModel).where(
-            UserModel.status == status,
-            UserModel.deleted_at.is_(None)
+            UserModel.status == status, UserModel.deleted_at.is_(None)
         )
         result = await self.db.execute(stmt)
         models = result.scalars().all()

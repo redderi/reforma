@@ -3,7 +3,6 @@ from reforma_mail.domain.entities.email_message import EmailMessage
 
 
 class SendEmailUseCase:
-
     def __init__(self, repo: MailRepository):
         self.repo = repo
 

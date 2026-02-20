@@ -1,7 +1,9 @@
 from uuid import UUID
 from datetime import date
 from reforma_survey.domain.entities.user_profile import UserProfile
-from reforma_survey.domain.repositories.user_profile_repository import UserProfileRepository
+from reforma_survey.domain.repositories.user_profile_repository import (
+    UserProfileRepository,
+)
 from reforma_survey.infrastructure.db.session import SessionLocal
 
 

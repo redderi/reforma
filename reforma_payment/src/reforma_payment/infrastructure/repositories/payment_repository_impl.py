@@ -1,17 +1,14 @@
 from typing import List
 from uuid import UUID
 from datetime import datetime
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
-
 from reforma_payment.domain.entities.payment import Payment
 from reforma_payment.domain.repositories.payment_repository import PaymentRepository
 from reforma_payment.infrastructure.db.models import PaymentModel
 
 
 class PaymentRepositoryImpl(PaymentRepository):
-
     def __init__(self, db: AsyncSession):
         self.db = db
 
@@ -42,7 +39,9 @@ class PaymentRepositoryImpl(PaymentRepository):
             return None
         return self._to_entity(model)
 
-    async def get_by_user(self, user_id: UUID, limit: int = 20, offset: int = 0) -> List[Payment]:
+    async def get_by_user(
+        self, user_id: UUID, limit: int = 20, offset: int = 0
+    ) -> List[Payment]:
         result = await self.db.execute(
             select(PaymentModel)
             .where(PaymentModel.user_id == user_id)
@@ -62,7 +61,6 @@ class PaymentRepositoryImpl(PaymentRepository):
         )
         models = result.scalars().all()
         return [self._to_entity(m) for m in models]
-
 
     async def create(self, payment: Payment) -> Payment:
         model = PaymentModel(
@@ -90,7 +88,7 @@ class PaymentRepositoryImpl(PaymentRepository):
         external_id: str | None = None,
         redirect_url: str | None = None,
         client_secret: str | None = None,
-        updated_at: datetime | None = None
+        updated_at: datetime | None = None,
     ) -> Payment:
         stmt = (
             update(PaymentModel)
@@ -100,7 +98,7 @@ class PaymentRepositoryImpl(PaymentRepository):
                 external_id=external_id,
                 redirect_url=redirect_url,
                 client_secret=client_secret,
-                updated_at=updated_at or datetime.utcnow()
+                updated_at=updated_at or datetime.utcnow(),
             )
             .returning(PaymentModel)
         )
@@ -112,40 +110,42 @@ class PaymentRepositoryImpl(PaymentRepository):
         return self._to_entity(model)
 
     async def mark_as_succeeded(
-        self,
-        payment_id: UUID,
-        external_id: str,
-        completed_at: datetime
+        self, payment_id: UUID, external_id: str, completed_at: datetime
     ) -> Payment:
         return await self.update_status(
             payment_id=payment_id,
             new_status="succeeded",
             external_id=external_id,
-            completed_at=completed_at
+            completed_at=completed_at,
         )
 
     async def mark_as_failed(
         self,
         payment_id: UUID,
         error_message: str | None = None,
-        completed_at: datetime | None = None
+        completed_at: datetime | None = None,
     ) -> Payment:
         return await self.update_status(
             payment_id=payment_id,
             new_status="failed",
             error_message=error_message,
-            completed_at=completed_at or datetime.utcnow()
+            completed_at=completed_at or datetime.utcnow(),
         )
 
     async def exists(self, payment_id: UUID) -> bool:
         result = await self.db.execute(
-            select(1).select_from(PaymentModel).where(PaymentModel.id == payment_id).limit(1)
+            select(1)
+            .select_from(PaymentModel)
+            .where(PaymentModel.id == payment_id)
+            .limit(1)
         )
         return result.scalar() is not None
 
     async def count_by_user(self, user_id: UUID) -> int:
         result = await self.db.execute(
-            select(func.count()).select_from(PaymentModel).where(PaymentModel.user_id == user_id)
+            select(func.count())
+            .select_from(PaymentModel)
+            .where(PaymentModel.user_id == user_id)
         )
         return result.scalar() or 0
 

@@ -1,19 +1,17 @@
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import List
 from uuid import UUID
 from datetime import date
-
 from reforma_survey.domain.entities.user_profile import UserProfile
 
 
 class UserProfileRepository(ABC):
-
     @abstractmethod
-    async def get_by_id(self, id: UUID) -> Optional[UserProfile]:
+    async def get_by_id(self, id: UUID) -> UserProfile | None:
         pass
 
     @abstractmethod
-    async def get_by_email(self, email: str) -> Optional[UserProfile]:
+    async def get_by_email(self, email: str) -> UserProfile | None:
         pass
 
     @abstractmethod
@@ -33,7 +31,9 @@ class UserProfileRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_profile_picture(self, user_id: UUID, picture_url: str | None) -> UserProfile:
+    async def update_profile_picture(
+        self, user_id: UUID, picture_url: str | None
+    ) -> UserProfile:
         pass
 
     @abstractmethod
@@ -45,15 +45,14 @@ class UserProfileRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_birth_date(self, user_id: UUID, birth_date: date | None) -> UserProfile:
+    async def update_birth_date(
+        self, user_id: UUID, birth_date: date | None
+    ) -> UserProfile:
         pass
 
     @abstractmethod
     async def update_location(
-        self,
-        user_id: UUID,
-        country: str | None,
-        city: str | None
+        self, user_id: UUID, country: str | None, city: str | None
     ) -> UserProfile:
         pass
 
@@ -64,7 +63,7 @@ class UserProfileRepository(ABC):
     @abstractmethod
     async def add_balance(self, user_id: UUID, amount: int) -> UserProfile:
         pass
-    
+
     @abstractmethod
     async def delete(self, user_id: UUID) -> None:
         pass

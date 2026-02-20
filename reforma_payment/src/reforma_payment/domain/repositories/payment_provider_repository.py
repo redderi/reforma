@@ -1,21 +1,20 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
-from typing import Optional, List
+from typing import List
 from reforma_payment.domain.entities.payment_provider import PaymentProvider
 
 
 class PaymentProviderRepository(ABC):
-
     @abstractmethod
     async def add(self, provider: PaymentProvider) -> PaymentProvider:
         pass
 
     @abstractmethod
-    async def get_by_id(self, provider_id: UUID) -> Optional[PaymentProvider]:
+    async def get_by_id(self, provider_id: UUID) -> PaymentProvider | None:
         pass
 
     @abstractmethod
-    async def get_active_by_type(self, provider_type: str) -> Optional[PaymentProvider]:
+    async def get_active_by_type(self, provider_type: str) -> PaymentProvider | None:
         pass
 
     @abstractmethod

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 from datetime import date
 from pydantic import BaseModel, EmailStr, Field
 
@@ -7,12 +7,13 @@ class UserProfileOut(BaseModel):
     id: str
     username: str
     email: EmailStr
-    profile_picture: Optional[str] = None
-    bio: Optional[str] = None
-    gender: Optional[str] = None
-    birth_date: Optional[str] = None  
-    country: Optional[str] = None
-    city: Optional[str] = None
+    profile_picture: str | None = None
+    bio: str | None = None
+    gender: str | None = None
+    birth_date: str | None = None
+    country: str | None = None
+    city: str | None = None
+    balance: int = 0
     surveys: List[str] = []
     templates: List[str] = []
     reports: List[str] = []
@@ -26,7 +27,7 @@ class UsernameUpdate(BaseModel):
         min_length=3,
         max_length=50,
         strip_whitespace=True,
-        description="Имя пользователя от 3 до 50 символов"
+        description="Имя пользователя от 3 до 50 символов",
     )
 
 
@@ -35,24 +36,23 @@ class EmailUpdate(BaseModel):
 
 
 class ProfilePictureUpdate(BaseModel):
-    picture_url: Optional[str] = None
+    picture_url: str | None = None
 
 
 class BioUpdate(BaseModel):
-    bio: Optional[str] = None
+    bio: str | None = None
 
 
 class GenderUpdate(BaseModel):
-    gender: Optional[str] = Field(
-        None,
-        description="Пол: male, female, other, prefer_not_to_say"
+    gender: str | None = Field(
+        None, description="Пол: male, female, other, prefer_not_to_say"
     )
 
 
 class BirthDateUpdate(BaseModel):
-    birth_date: Optional[date] = None
+    birth_date: date | None = None
 
 
 class LocationUpdate(BaseModel):
-    country: Optional[str] = None
-    city: Optional[str] = None
+    country: str | None = None
+    city: str | None = None

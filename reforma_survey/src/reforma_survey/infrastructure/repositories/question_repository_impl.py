@@ -1,17 +1,14 @@
 from typing import Dict, List
 from uuid import UUID
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
 from sqlalchemy.orm import selectinload
-
 from reforma_survey.domain.entities.question import Question
 from reforma_survey.domain.repositories.question_repository import QuestionRepository
-from reforma_survey.infrastructure.db.models import QuestionModel, BranchingRuleModel
+from reforma_survey.infrastructure.db.models import QuestionModel
 
 
 class QuestionRepositoryImpl(QuestionRepository):
-
     def __init__(self, db: AsyncSession):
         self.db = db
 
@@ -103,7 +100,6 @@ class QuestionRepositoryImpl(QuestionRepository):
             .where(QuestionModel.survey_id == survey_id)
         )
         return result.scalar() or 0
-
 
     async def _get_model_or_raise(self, question_id: UUID) -> QuestionModel:
         model = await self.db.get(QuestionModel, question_id)

@@ -1,17 +1,16 @@
 from abc import ABC, abstractmethod
 from reforma_authorization.domain.entities.user import User, UserStatus
-import uuid
+from uuid import UUID
 
 
 class UserRepository(ABC):
-
     @abstractmethod
-    async def get_by_id(self, id: uuid.UUID) -> User | None:
+    async def get_by_id(self, id: UUID) -> User | None:
         pass
 
     @abstractmethod
     async def get_by_username(self, username: str) -> User | None:
-        pass                            
+        pass
 
     @abstractmethod
     async def get_by_email(self, email: str) -> User | None:
@@ -40,13 +39,13 @@ class UserRepository(ABC):
     @abstractmethod
     async def delete(self, user: User) -> None:
         pass
-    
+
     @abstractmethod
-    async def delete_by_id(self, user_id: uuid.UUID) -> None:
+    async def delete_by_id(self, user_id: UUID) -> None:
         pass
 
     @abstractmethod
-    async def mark_email_as_verified(self, user_id: uuid.UUID) -> None:
+    async def mark_email_as_verified(self, user_id: UUID) -> None:
         pass
 
     @abstractmethod
@@ -62,7 +61,7 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def suspend(self, user: User, reason: str, suspended_by: uuid.UUID) -> User:
+    async def suspend(self, user: User, reason: str, suspended_by: UUID) -> User:
         pass
 
     @abstractmethod
@@ -72,11 +71,11 @@ class UserRepository(ABC):
     @abstractmethod
     async def get_by_status(self, status: UserStatus) -> list[User]:
         pass
-    
+
     @abstractmethod
     async def hard_delete(self, user: User) -> None:
         pass
 
     @abstractmethod
-    async def hard_delete_by_id(self, user_id: uuid.UUID) -> None:
+    async def hard_delete_by_id(self, user_id: UUID) -> None:
         pass

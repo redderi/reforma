@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
 STORAGE_ENDPOINT = os.getenv("STORAGE_ENDPOINT")
 STORAGE_ACCESS_KEY = os.getenv("STORAGE_ACCESS_KEY")
 STORAGE_SECRET_KEY = os.getenv("STORAGE_SECRET_KEY")

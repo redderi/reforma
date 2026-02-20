@@ -1,6 +1,7 @@
 from uuid import UUID
 from pydantic import BaseModel, Field
 
+
 class BranchingRuleOut(BaseModel):
     id: str
     question_id: str

@@ -1,23 +1,52 @@
-from fastapi import APIRouter, Depends, HTTPException
-from reforma_survey.presentation.schemas.template_schema import TemplateAddAsset, TemplateCreate, TemplateDescriptionUpdate, TemplateNameUpdate, TemplateOut, TemplateRemoveAsset
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Dict, List
-
+from reforma_survey.presentation.schemas.template_schema import (
+    TemplateAddAsset,
+    TemplateCreate,
+    TemplateDescriptionUpdate,
+    TemplateNameUpdate,
+    TemplateOut,
+    TemplateRemoveAsset,
+)
 from reforma_survey.presentation.dependencies.get_db import get_db
-from reforma_survey.presentation.dependencies.get_current_user_id import get_current_user_id
-from reforma_survey.infrastructure.repositories.template_repository_impl import TemplateRepositoryImpl
-
-from reforma_survey.application.template.get_template_by_id_use_case import GetTemplateByIdUseCase
-from reforma_survey.application.template.get_templates_by_owner_use_case import GetTemplatesByOwnerUseCase
-from reforma_survey.application.template.create_template_use_case import CreateTemplateUseCase
-from reforma_survey.application.template.update_template_name_use_case import UpdateTemplateNameUseCase
-from reforma_survey.application.template.update_template_description_use_case import UpdateTemplateDescriptionUseCase
-from reforma_survey.application.template.update_template_survey_style_use_case import UpdateTemplateSurveyStyleUseCase
-from reforma_survey.application.template.update_template_question_style_use_case import UpdateTemplateQuestionStyleUseCase
-from reforma_survey.application.template.add_template_asset_use_case import AddTemplateAssetUseCase
-from reforma_survey.application.template.remove_template_asset_use_case import RemoveTemplateAssetUseCase
-from reforma_survey.application.template.delete_template_use_case import DeleteTemplateUseCase
+from reforma_survey.presentation.dependencies.get_current_user_id import (
+    get_current_user_id,
+)
+from reforma_survey.infrastructure.repositories.template_repository_impl import (
+    TemplateRepositoryImpl,
+)
+from reforma_survey.application.template.get_template_by_id_use_case import (
+    GetTemplateByIdUseCase,
+)
+from reforma_survey.application.template.get_templates_by_owner_use_case import (
+    GetTemplatesByOwnerUseCase,
+)
+from reforma_survey.application.template.create_template_use_case import (
+    CreateTemplateUseCase,
+)
+from reforma_survey.application.template.update_template_name_use_case import (
+    UpdateTemplateNameUseCase,
+)
+from reforma_survey.application.template.update_template_description_use_case import (
+    UpdateTemplateDescriptionUseCase,
+)
+from reforma_survey.application.template.update_template_survey_style_use_case import (
+    UpdateTemplateSurveyStyleUseCase,
+)
+from reforma_survey.application.template.update_template_question_style_use_case import (
+    UpdateTemplateQuestionStyleUseCase,
+)
+from reforma_survey.application.template.add_template_asset_use_case import (
+    AddTemplateAssetUseCase,
+)
+from reforma_survey.application.template.remove_template_asset_use_case import (
+    RemoveTemplateAssetUseCase,
+)
+from reforma_survey.application.template.delete_template_use_case import (
+    DeleteTemplateUseCase,
+)
 
 from reforma_common.logger import log_info, log_warning, log_error
 
@@ -26,14 +55,32 @@ router = APIRouter(prefix="/templates", tags=["Templates"])
 
 @router.get("/me", response_model=List[TemplateOut])
 async def get_my_templates(
+    request: Request,
     current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    log_info(f"Получение всех шаблонов пользователя {current_user_id}", service="survey-service")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Retrieve current user's templates",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+    )
 
     try:
         use_case = GetTemplatesByOwnerUseCase(TemplateRepositoryImpl(db))
         templates = await use_case.execute(current_user_id)
+
+        log_info(
+            "User templates retrieved successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"templates_count": len(templates)},
+        )
 
         return [
             TemplateOut(
@@ -49,27 +96,69 @@ async def get_my_templates(
         ]
 
     except Exception as e:
-        log_error(f"Ошибка получения шаблонов пользователя {current_user_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            "Unexpected error retrieving user templates",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{template_id}", response_model=TemplateOut)
 async def get_template(
+    request: Request,
     template_id: UUID,
     current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    log_info(f"Получение шаблона {template_id} пользователем {current_user_id}", service="survey-service")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Retrieve template by ID",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+        context={"template_id": str(template_id)},
+    )
 
     try:
         use_case = GetTemplateByIdUseCase(TemplateRepositoryImpl(db))
         template = await use_case.execute(template_id)
 
         if not template:
-            raise HTTPException(status_code=404, detail="Шаблон не найден")
+            log_warning(
+                "Template not found",
+                service="survey-service",
+                request=request,
+                trace_id=trace_id,
+                user_id=str(current_user_id),
+                context={"template_id": str(template_id)},
+            )
+            raise HTTPException(status_code=404, detail="Template not found")
 
         if str(template.owner_id) != str(current_user_id):
-            raise HTTPException(status_code=403, detail="Нет доступа к шаблону")
+            log_warning(
+                "User does not have access to template",
+                service="survey-service",
+                request=request,
+                trace_id=trace_id,
+                user_id=str(current_user_id),
+                context={"template_id": str(template_id)},
+            )
+            raise HTTPException(status_code=403, detail="No access to template")
+
+        log_info(
+            "Template retrieved successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id)},
+        )
 
         return TemplateOut(
             id=str(template.id),
@@ -84,22 +173,53 @@ async def get_template(
     except HTTPException:
         raise
     except Exception as e:
-        log_error(f"Ошибка получения шаблона {template_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            "Unexpected error retrieving template",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/", response_model=TemplateOut, status_code=201)
 async def create_template(
+    request: Request,
     payload: TemplateCreate,
     current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    log_info(f"Создание шаблона пользователем {current_user_id}, name={payload.name}", service="survey-service")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Create template attempt",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+        context={
+            "name": payload.name,
+            "description_length": len(payload.description)
+            if payload.description
+            else 0,
+        },
+    )
 
     try:
         use_case = CreateTemplateUseCase(TemplateRepositoryImpl(db))
         template_data = payload.dict(exclude_unset=True)
         created = await use_case.execute(template_data, current_user_id)
+
+        log_info(
+            "Template created successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(created.id)},
+        )
 
         return TemplateOut(
             id=str(created.id),
@@ -112,28 +232,70 @@ async def create_template(
         )
 
     except ValueError as e:
-        log_warning(f"Ошибка создания шаблона: {e}", service="survey-service")
+        log_warning(
+            "Template creation failed due to validation error",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"name": payload.name, "error_detail": str(e)},
+        )
         raise HTTPException(status_code=400, detail=str(e))
+
     except Exception as e:
-        log_error(f"Неожиданная ошибка создания шаблона: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            "Unexpected error during template creation",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"name": payload.name, "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.patch("/{template_id}/name", response_model=TemplateOut)
 async def update_template_name(
+    request: Request,
     template_id: UUID,
     payload: TemplateNameUpdate,
     current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    log_info(f"Обновление имени шаблона {template_id} → {payload.name} пользователем {current_user_id}", service="survey-service")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Update template name attempt",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+        context={"template_id": str(template_id), "new_name": payload.name},
+    )
 
     try:
         use_case = UpdateTemplateNameUseCase(TemplateRepositoryImpl(db))
         updated = await use_case.execute(template_id, payload.name)
 
         if str(updated.owner_id) != str(current_user_id):
-            raise HTTPException(status_code=403, detail="Нет прав на редактирование")
+            log_warning(
+                "User does not have permission to update template name",
+                service="survey-service",
+                request=request,
+                trace_id=trace_id,
+                user_id=str(current_user_id),
+                context={"template_id": str(template_id)},
+            )
+            raise HTTPException(status_code=403, detail="No permission")
+
+        log_info(
+            "Template name updated successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id)},
+        )
 
         return TemplateOut(
             id=str(updated.id),
@@ -146,27 +308,75 @@ async def update_template_name(
         )
 
     except ValueError as e:
+        log_warning(
+            "Template name update failed",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
         raise HTTPException(status_code=400, detail=str(e))
+
     except Exception as e:
-        log_error(f"Ошибка обновления имени шаблона {template_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            "Unexpected error updating template name",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.patch("/{template_id}/description", response_model=TemplateOut)
 async def update_template_description(
+    request: Request,
     template_id: UUID,
     payload: TemplateDescriptionUpdate,
     current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    log_info(f"Обновление описания шаблона {template_id} пользователем {current_user_id}", service="survey-service")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Update template description attempt",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+        context={
+            "template_id": str(template_id),
+            "new_description_length": len(payload.description)
+            if payload.description
+            else 0,
+        },
+    )
 
     try:
         use_case = UpdateTemplateDescriptionUseCase(TemplateRepositoryImpl(db))
         updated = await use_case.execute(template_id, payload.description)
 
         if str(updated.owner_id) != str(current_user_id):
-            raise HTTPException(status_code=403, detail="Нет прав")
+            log_warning(
+                "User does not have permission to update template description",
+                service="survey-service",
+                request=request,
+                trace_id=trace_id,
+                user_id=str(current_user_id),
+                context={"template_id": str(template_id)},
+            )
+            raise HTTPException(status_code=403, detail="No permission")
+
+        log_info(
+            "Template description updated successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id)},
+        )
 
         return TemplateOut(
             id=str(updated.id),
@@ -179,25 +389,59 @@ async def update_template_description(
         )
 
     except Exception as e:
-        log_error(f"Ошибка обновления описания шаблона {template_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            "Unexpected error updating template description",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.patch("/{template_id}/survey-style", response_model=TemplateOut)
 async def update_template_survey_style(
+    request: Request,
     template_id: UUID,
     payload: Dict,
     current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    log_info(f"Обновление стилей опроса шаблона {template_id} пользователем {current_user_id}", service="survey-service")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Update template survey style attempt",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+        context={"template_id": str(template_id), "style_keys": list(payload.keys())},
+    )
 
     try:
         use_case = UpdateTemplateSurveyStyleUseCase(TemplateRepositoryImpl(db))
         updated = await use_case.execute(template_id, payload)
 
         if str(updated.owner_id) != str(current_user_id):
-            raise HTTPException(status_code=403, detail="Нет прав")
+            log_warning(
+                "User does not have permission to update template survey style",
+                service="survey-service",
+                request=request,
+                trace_id=trace_id,
+                user_id=str(current_user_id),
+                context={"template_id": str(template_id)},
+            )
+            raise HTTPException(status_code=403, detail="No permission")
+
+        log_info(
+            "Template survey style updated successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id)},
+        )
 
         return TemplateOut(
             id=str(updated.id),
@@ -210,25 +454,59 @@ async def update_template_survey_style(
         )
 
     except Exception as e:
-        log_error(f"Ошибка обновления стилей опроса шаблона {template_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            "Unexpected error updating template survey style",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.patch("/{template_id}/question-style", response_model=TemplateOut)
 async def update_template_question_style(
+    request: Request,
     template_id: UUID,
     payload: Dict,
     current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    log_info(f"Обновление стилей вопросов шаблона {template_id} пользователем {current_user_id}", service="survey-service")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Update template question style attempt",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+        context={"template_id": str(template_id), "style_keys": list(payload.keys())},
+    )
 
     try:
         use_case = UpdateTemplateQuestionStyleUseCase(TemplateRepositoryImpl(db))
         updated = await use_case.execute(template_id, payload)
 
         if str(updated.owner_id) != str(current_user_id):
-            raise HTTPException(status_code=403, detail="Нет прав")
+            log_warning(
+                "User does not have permission to update template question style",
+                service="survey-service",
+                request=request,
+                trace_id=trace_id,
+                user_id=str(current_user_id),
+                context={"template_id": str(template_id)},
+            )
+            raise HTTPException(status_code=403, detail="No permission")
+
+        log_info(
+            "Template question style updated successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id)},
+        )
 
         return TemplateOut(
             id=str(updated.id),
@@ -241,82 +519,214 @@ async def update_template_question_style(
         )
 
     except Exception as e:
-        log_error(f"Ошибка обновления стилей вопросов шаблона {template_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            "Unexpected error updating template question style",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{template_id}/assets")
 async def add_template_asset(
+    request: Request,
     template_id: UUID,
     payload: TemplateAddAsset,
     current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    log_info(f"Добавление ассета в шаблон {template_id} пользователем {current_user_id}", service="survey-service")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Add template asset attempt",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+        context={
+            "template_id": str(template_id),
+            "asset_url": payload.asset_url[:100] + "..."
+            if len(payload.asset_url) > 100
+            else payload.asset_url,
+        },
+    )
 
     try:
         use_case = AddTemplateAssetUseCase(TemplateRepositoryImpl(db))
         updated = await use_case.execute(template_id, payload.asset_url)
 
         if str(updated.owner_id) != str(current_user_id):
-            raise HTTPException(status_code=403, detail="Нет прав")
+            log_warning(
+                "User does not have permission to add asset to template",
+                service="survey-service",
+                request=request,
+                trace_id=trace_id,
+                user_id=str(current_user_id),
+                context={"template_id": str(template_id)},
+            )
+            raise HTTPException(status_code=403, detail="No permission")
 
-        return {
-            "detail": "Ассет добавлен",
-            "assets": updated.assets
-        }
+        log_info(
+            "Template asset added successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id)},
+        )
+
+        return {"detail": "Asset added", "assets": updated.assets}
 
     except ValueError as e:
+        log_warning(
+            "Add template asset failed",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
         raise HTTPException(status_code=400, detail=str(e))
+
     except Exception as e:
-        log_error(f"Ошибка добавления ассета в шаблон {template_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            "Unexpected error adding template asset",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{template_id}/assets")
 async def remove_template_asset(
+    request: Request,
     template_id: UUID,
     payload: TemplateRemoveAsset,
     current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    log_info(f"Удаление ассета из шаблона {template_id} пользователем {current_user_id}", service="survey-service")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Remove template asset attempt",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+        context={
+            "template_id": str(template_id),
+            "asset_url": payload.asset_url[:100] + "..."
+            if len(payload.asset_url) > 100
+            else payload.asset_url,
+        },
+    )
 
     try:
         use_case = RemoveTemplateAssetUseCase(TemplateRepositoryImpl(db))
         updated = await use_case.execute(template_id, payload.asset_url)
 
         if str(updated.owner_id) != str(current_user_id):
-            raise HTTPException(status_code=403, detail="Нет прав")
+            log_warning(
+                "User does not have permission to remove asset from template",
+                service="survey-service",
+                request=request,
+                trace_id=trace_id,
+                user_id=str(current_user_id),
+                context={"template_id": str(template_id)},
+            )
+            raise HTTPException(status_code=403, detail="No permission")
 
-        return {
-            "detail": "Ассет удалён",
-            "assets": updated.assets
-        }
+        log_info(
+            "Template asset removed successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id)},
+        )
+
+        return {"detail": "Asset removed", "assets": updated.assets}
 
     except ValueError as e:
+        log_warning(
+            "Remove template asset failed",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
         raise HTTPException(status_code=400, detail=str(e))
+
     except Exception as e:
-        log_error(f"Ошибка удаления ассета из шаблона {template_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            "Unexpected error removing template asset",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{template_id}")
 async def delete_template(
+    request: Request,
     template_id: UUID,
     current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    log_info(f"Удаление шаблона {template_id} пользователем {current_user_id}", service="survey-service")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Delete template attempt",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+        context={"template_id": str(template_id)},
+    )
 
     try:
         use_case = DeleteTemplateUseCase(TemplateRepositoryImpl(db))
         await use_case.execute(template_id)
 
-        return {"detail": "Шаблон удалён"}
+        log_info(
+            "Template deleted successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id)},
+        )
+
+        return {"detail": "Template deleted"}
 
     except ValueError as e:
+        log_warning(
+            "Template deletion failed",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
         raise HTTPException(status_code=400, detail=str(e))
+
     except Exception as e:
-        log_error(f"Ошибка удаления шаблона {template_id}: {e}", service="survey-service")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка")
+        log_error(
+            "Unexpected error deleting template",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"template_id": str(template_id), "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")

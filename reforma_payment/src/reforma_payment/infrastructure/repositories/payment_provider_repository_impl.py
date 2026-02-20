@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -6,8 +6,8 @@ from sqlalchemy import update, delete
 from reforma_payment.domain.entities.payment_provider import PaymentProvider
 from reforma_payment.infrastructure.db.models import PaymentProviderModel
 
-class PaymentProviderRepositoryImpl:
 
+class PaymentProviderRepositoryImpl:
     def __init__(self, session: AsyncSession):
         self.session = session
 
@@ -18,13 +18,13 @@ class PaymentProviderRepositoryImpl:
             provider_type=provider.provider_type,
             credentials=provider.credentials,
             is_active=provider.is_active,
-            created_at=provider.created_at
+            created_at=provider.created_at,
         )
         self.session.add(model)
         await self.session.commit()
         return provider
 
-    async def get_by_id(self, provider_id: UUID) -> Optional[PaymentProvider]:
+    async def get_by_id(self, provider_id: UUID) -> PaymentProvider | None:
         result = await self.session.get(PaymentProviderModel, provider_id)
         if not result:
             return None
@@ -34,14 +34,14 @@ class PaymentProviderRepositoryImpl:
             provider_type=result.provider_type,
             credentials=result.credentials,
             is_active=result.is_active,
-            created_at=result.created_at
+            created_at=result.created_at,
         )
 
-    async def get_active_by_type(self, provider_type: str) -> Optional[PaymentProvider]:
+    async def get_active_by_type(self, provider_type: str) -> PaymentProvider | None:
         result = await self.session.execute(
             select(PaymentProviderModel).where(
                 PaymentProviderModel.provider_type == provider_type,
-                PaymentProviderModel.is_active
+                PaymentProviderModel.is_active,
             )
         )
         row = result.scalar_one_or_none()
@@ -53,7 +53,7 @@ class PaymentProviderRepositoryImpl:
             provider_type=row.provider_type,
             credentials=row.credentials,
             is_active=row.is_active,
-            created_at=row.created_at
+            created_at=row.created_at,
         )
 
     async def list_active(self) -> List[PaymentProvider]:
@@ -68,8 +68,9 @@ class PaymentProviderRepositoryImpl:
                 provider_type=row.provider_type,
                 credentials=row.credentials,
                 is_active=row.is_active,
-                created_at=row.created_at
-            ) for row in rows
+                created_at=row.created_at,
+            )
+            for row in rows
         ]
 
     async def update(self, provider: PaymentProvider) -> PaymentProvider:
@@ -80,7 +81,7 @@ class PaymentProviderRepositoryImpl:
                 name=provider.name,
                 provider_type=provider.provider_type,
                 credentials=provider.credentials,
-                is_active=provider.is_active
+                is_active=provider.is_active,
             )
         )
         await self.session.commit()

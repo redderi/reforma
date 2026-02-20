@@ -7,13 +7,20 @@ from reforma_survey.infrastructure.config.rabbitmq_config import (
     USER_CREATE_ROUTING_KEY,
     USER_DELETE_ROUTING_KEY,
     USER_CHANGE_USERNAME_ROUTING_KEY,
-    USER_CHANGE_EMAIL_ROUTING_KEY
+    USER_CHANGE_EMAIL_ROUTING_KEY,
 )
-from reforma_survey.application.handlers.create_user_profile_handler import CreateUserProfileHandler
-from reforma_survey.application.handlers.delete_user_profile_handler import DeleteUserProfileHandler
-from reforma_survey.application.handlers.change_user_profile_handler import ChangeUserProfileUsernameHandler
-from reforma_survey.application.handlers.change_user_profile_email_handler import ChangeUserProfileEmailHandler
-
+from reforma_survey.application.handlers.create_user_profile_handler import (
+    CreateUserProfileHandler,
+)
+from reforma_survey.application.handlers.delete_user_profile_handler import (
+    DeleteUserProfileHandler,
+)
+from reforma_survey.application.handlers.change_user_profile_handler import (
+    ChangeUserProfileUsernameHandler,
+)
+from reforma_survey.application.handlers.change_user_profile_email_handler import (
+    ChangeUserProfileEmailHandler,
+)
 from reforma_common.logger import log_info, log_warning, log_error
 from reforma_survey.application.handlers.add_balance_handler import AddBalanceHandler
 
@@ -22,8 +29,9 @@ HANDLERS = {
     USER_DELETE_ROUTING_KEY: DeleteUserProfileHandler(),
     USER_CHANGE_USERNAME_ROUTING_KEY: ChangeUserProfileUsernameHandler(),
     USER_CHANGE_EMAIL_ROUTING_KEY: ChangeUserProfileEmailHandler(),
-    ADD_BALANCE_ROUTING_KEY: AddBalanceHandler()
+    ADD_BALANCE_ROUTING_KEY: AddBalanceHandler(),
 }
+
 
 class UserConsumer:
     _instance = None
@@ -47,9 +55,7 @@ class UserConsumer:
         channel = self.rabbit.channel
 
         exchange = await channel.declare_exchange(
-            USER_EXCHANGE,
-            aio_pika.ExchangeType.DIRECT,
-            durable=True
+            USER_EXCHANGE, aio_pika.ExchangeType.DIRECT, durable=True
         )
 
         queue_name = "survey_user_events"
@@ -71,9 +77,15 @@ class UserConsumer:
                     if handler:
                         await handler.handle(payload)
                     else:
-                        log_warning(f"[UserConsumer] Unknown event type: {event_type}", service="survey_service")
+                        log_warning(
+                            f"[UserConsumer] Unknown event type: {event_type}",
+                            service="survey_service",
+                        )
                 except Exception as e:
-                    log_error(f"[UserConsumer] Error processing message: {e}", service="survey_service")
+                    log_error(
+                        f"[UserConsumer] Error processing message: {e}",
+                        service="survey_service",
+                    )
 
         await queue.consume(callback)
 

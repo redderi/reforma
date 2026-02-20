@@ -16,7 +16,9 @@ class QuestionOut(BaseModel):
 
 class QuestionCreate(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
-    type: str = Field(..., description="single_choice, multiple_choice, text, slider, rating и т.д.")
+    type: str = Field(
+        ..., description="single_choice, multiple_choice, text, slider, rating и т.д."
+    )
     options: List[str] | None = None
     style: Dict | None = None
     order: int = 0

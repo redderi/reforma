@@ -1,18 +1,14 @@
 from datetime import datetime
 from typing import Dict, List
 from uuid import UUID
-
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, func
-from sqlalchemy.orm import selectinload
-
+from sqlalchemy import select, delete, func
 from reforma_survey.domain.entities.template import Template
 from reforma_survey.domain.repositories.template_repository import TemplateRepository
 from reforma_survey.infrastructure.db.models import TemplateModel
 
 
 class TemplateRepositoryImpl(TemplateRepository):
-
     def __init__(self, db: AsyncSession):
         self.db = db
 
@@ -64,19 +60,25 @@ class TemplateRepositoryImpl(TemplateRepository):
         await self.db.flush()
         return self._to_entity(model)
 
-    async def update_description(self, template_id: UUID, description: str | None) -> Template:
+    async def update_description(
+        self, template_id: UUID, description: str | None
+    ) -> Template:
         model = await self._get_model_or_raise(template_id)
         model.description = description
         await self.db.flush()
         return self._to_entity(model)
 
-    async def update_survey_style(self, template_id: UUID, survey_style: Dict) -> Template:
+    async def update_survey_style(
+        self, template_id: UUID, survey_style: Dict
+    ) -> Template:
         model = await self._get_model_or_raise(template_id)
         model.style = survey_style
         await self.db.flush()
         return self._to_entity(model)
 
-    async def update_question_style(self, template_id: UUID, question_style: Dict) -> Template:
+    async def update_question_style(
+        self, template_id: UUID, question_style: Dict
+    ) -> Template:
         model = await self._get_model_or_raise(template_id)
         current_style = model.style or {}
         current_style["question"] = question_style

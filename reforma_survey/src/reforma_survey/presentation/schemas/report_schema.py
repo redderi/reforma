@@ -2,6 +2,7 @@ from uuid import UUID
 from typing import List
 from pydantic import BaseModel, Field
 
+
 class ReportOut(BaseModel):
     id: str
     survey_id: str

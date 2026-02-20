@@ -1,21 +1,18 @@
-from typing import Any, Optional, List, Dict
+from typing import Any, List, Dict
 from uuid import UUID
 from datetime import datetime
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func, distinct, or_
-
 from reforma_survey.domain.entities.response import Response
 from reforma_survey.domain.repositories.response_repository import ResponseRepository
 from reforma_survey.infrastructure.db.models import ResponseModel
 
 
 class ResponseRepositoryImpl(ResponseRepository):
-
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_id(self, response_id: UUID) -> Optional[Response]:
+    async def get_by_id(self, response_id: UUID) -> Response | None:
         model = await self.db.get(ResponseModel, response_id)
         return self._to_entity(model) if model else None
 
@@ -24,7 +21,7 @@ class ResponseRepositoryImpl(ResponseRepository):
         survey_id: UUID,
         limit: int = 100,
         offset: int = 0,
-        include_anonymous: bool = True
+        include_anonymous: bool = True,
     ) -> List[Response]:
         stmt = (
             select(ResponseModel)
@@ -44,9 +41,9 @@ class ResponseRepositoryImpl(ResponseRepository):
     async def get_by_user_and_survey(
         self,
         survey_id: UUID,
-        user_id: Optional[UUID] = None,
-        anonymous_id: Optional[str] = None
-    ) -> Optional[Response]:
+        user_id: UUID | None = None,
+        anonymous_id: str | None = None,
+    ) -> Response | None:
         stmt = select(ResponseModel).where(ResponseModel.survey_id == survey_id)
 
         if user_id:
@@ -62,7 +59,9 @@ class ResponseRepositoryImpl(ResponseRepository):
         model = result.scalar_one_or_none()
         return self._to_entity(model) if model else None
 
-    async def get_latest_by_user(self, user_id: UUID, limit: int = 10) -> List[Response]:
+    async def get_latest_by_user(
+        self, user_id: UUID, limit: int = 10
+    ) -> List[Response]:
         result = await self.db.execute(
             select(ResponseModel)
             .where(ResponseModel.user_id == user_id)
@@ -75,10 +74,10 @@ class ResponseRepositoryImpl(ResponseRepository):
     async def has_already_responded(
         self,
         survey_id: UUID,
-        user_id: Optional[UUID] = None,
-        anonymous_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        fingerprint: Optional[str] = None
+        user_id: UUID | None = None,
+        anonymous_id: str | None = None,
+        ip_address: str | None = None,
+        fingerprint: str | None = None,
     ) -> bool:
         if not any([user_id, anonymous_id, ip_address, fingerprint]):
             return False
@@ -109,7 +108,7 @@ class ResponseRepositoryImpl(ResponseRepository):
             ip_address=response.ip_address,
             fingerprint=response.fingerprint,
             answers=response.answers,
-            submitted_at=response.submitted_at
+            submitted_at=response.submitted_at,
         )
 
         self.db.add(model)
@@ -117,9 +116,7 @@ class ResponseRepositoryImpl(ResponseRepository):
         return self._to_entity(model)
 
     async def update_answers(
-        self,
-        response_id: UUID,
-        new_answers: Dict[UUID, Any]
+        self, response_id: UUID, new_answers: Dict[UUID, Any]
     ) -> Response:
         model = await self._get_model_or_raise(response_id)
         model.answers = new_answers
@@ -127,9 +124,7 @@ class ResponseRepositoryImpl(ResponseRepository):
         return self._to_entity(model)
 
     async def mark_submitted(
-        self,
-        response_id: UUID,
-        submitted_at: datetime = None
+        self, response_id: UUID, submitted_at: datetime = None
     ) -> Response:
         model = await self._get_model_or_raise(response_id)
         model.submitted_at = submitted_at or datetime.utcnow()

@@ -1,12 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List
 from uuid import UUID
-
 from reforma_survey.domain.entities.template import Template
 
 
 class TemplateRepository(ABC):
-
     @abstractmethod
     async def get_by_id(self, template_id: UUID) -> Template | None:
         pass
@@ -28,15 +26,21 @@ class TemplateRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_description(self, template_id: UUID, description: str | None) -> Template:
+    async def update_description(
+        self, template_id: UUID, description: str | None
+    ) -> Template:
         pass
 
     @abstractmethod
-    async def update_survey_style(self, template_id: UUID, survey_style: Dict) -> Template:
+    async def update_survey_style(
+        self, template_id: UUID, survey_style: Dict
+    ) -> Template:
         pass
 
     @abstractmethod
-    async def update_question_style(self, template_id: UUID, question_style: Dict) -> Template:
+    async def update_question_style(
+        self, template_id: UUID, question_style: Dict
+    ) -> Template:
         pass
 
     @abstractmethod
@@ -58,4 +62,3 @@ class TemplateRepository(ABC):
     @abstractmethod
     async def count_by_owner(self, owner_id: UUID) -> int:
         pass
-    

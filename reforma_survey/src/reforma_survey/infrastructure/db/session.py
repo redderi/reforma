@@ -2,41 +2,63 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from reforma_survey.infrastructure.config.db_config import (
-    DATABASE_URL, 
-    DB_HOST, 
-    DB_NAME, 
-    DB_PASSWORD, 
-    DB_PORT, 
-    DB_USER
+    DATABASE_URL,
+    DB_HOST,
+    DB_NAME,
+    DB_PASSWORD,
+    DB_PORT,
+    DB_USER,
 )
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from reforma_survey.infrastructure.db.base import Base
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession 
-from reforma_common.logger import log_info
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+
+from reforma_common.logger import log_error, log_info
+
 
 def create_database():
-    conn = psycopg2.connect(
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        host=DB_HOST,
-        port=DB_PORT
-    )
-    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)  
+    try:
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT,
+        )
+        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM pg_database WHERE datname=%s", (DB_NAME,))
+        exists = cur.fetchone()
+        if not exists:
+            cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(DB_NAME)))
+            log_info(
+                "Database created successfully",
+                service="survey-service",
+                context={"database_name": DB_NAME, "host": DB_HOST, "port": DB_PORT},
+            )
+        else:
+            log_info(
+                "Database already exists",
+                service="survey-service",
+                context={"database_name": DB_NAME},
+            )
 
-    cur = conn.cursor()
+        cur.close()
+        conn.close()
 
-    cur.execute("SELECT 1 FROM pg_database WHERE datname=%s", (DB_NAME,))
-    exists = cur.fetchone()
-    if not exists:
-        cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(DB_NAME)))
-        log_info(f"База {DB_NAME} создана", service="survey-service")
-    else:
-        log_info(f"База {DB_NAME} уже существует", service="survey-service")
+    except Exception as e:
+        log_error(
+            "Failed to create or check database",
+            service="survey-service",
+            context={
+                "database_name": DB_NAME,
+                "host": DB_HOST,
+                "port": DB_PORT,
+                "error_detail": str(e),
+            },
+        )
+        raise
 
-    cur.close()
-    conn.close()
 
 engine = create_async_engine(
     DATABASE_URL,

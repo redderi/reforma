@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 from datetime import datetime
-import uuid
+from uuid import UUID
+
 
 @dataclass
 class RefreshToken:
     token: str
-    user_id: uuid.UUID
+    jti: str
+    user_id: UUID
     device_id: str
     expires_at: datetime
+    revoked: bool = False

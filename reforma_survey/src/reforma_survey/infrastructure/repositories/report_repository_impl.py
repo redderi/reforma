@@ -1,17 +1,14 @@
 from typing import List
 from uuid import UUID
 from datetime import datetime
-
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, func
-
+from sqlalchemy import select, delete, func
 from reforma_survey.domain.entities.report import Report
 from reforma_survey.domain.repositories.report_repository import ReportRepository
 from reforma_survey.infrastructure.db.models import ReportModel
 
 
 class ReportRepositoryImpl(ReportRepository):
-
     def __init__(self, db: AsyncSession):
         self.db = db
 
@@ -54,7 +51,6 @@ class ReportRepositoryImpl(ReportRepository):
             return None
         return self._to_entity(model)
 
-
     async def create(self, report: Report) -> Report:
         model = ReportModel(
             id=report.id,
@@ -78,7 +74,7 @@ class ReportRepositoryImpl(ReportRepository):
         new_status: str,
         processing_started_at: datetime | None = None,
         completed_at: datetime | None = None,
-        error_message: str | None = None
+        error_message: str | None = None,
     ) -> Report:
         model = await self._get_model_or_raise(report_id)
 
@@ -115,19 +111,26 @@ class ReportRepositoryImpl(ReportRepository):
 
     async def exists(self, report_id: UUID) -> bool:
         result = await self.db.execute(
-            select(1).select_from(ReportModel).where(ReportModel.id == report_id).limit(1)
+            select(1)
+            .select_from(ReportModel)
+            .where(ReportModel.id == report_id)
+            .limit(1)
         )
         return result.scalar() is not None
 
     async def count_by_survey(self, survey_id: UUID) -> int:
         result = await self.db.execute(
-            select(func.count()).select_from(ReportModel).where(ReportModel.survey_id == survey_id)
+            select(func.count())
+            .select_from(ReportModel)
+            .where(ReportModel.survey_id == survey_id)
         )
         return result.scalar() or 0
 
     async def count_by_owner(self, owner_id: UUID) -> int:
         result = await self.db.execute(
-            select(func.count()).select_from(ReportModel).where(ReportModel.owner_id == owner_id)
+            select(func.count())
+            .select_from(ReportModel)
+            .where(ReportModel.owner_id == owner_id)
         )
         return result.scalar() or 0
 

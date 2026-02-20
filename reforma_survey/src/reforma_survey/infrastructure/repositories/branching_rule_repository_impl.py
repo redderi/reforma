@@ -1,16 +1,15 @@
 from typing import List
 from uuid import UUID
-
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, func
-
+from sqlalchemy import select, delete, func
 from reforma_survey.domain.entities.branching_rule import BranchingRule
-from reforma_survey.domain.repositories.branching_rule_repository import BranchingRuleRepository
+from reforma_survey.domain.repositories.branching_rule_repository import (
+    BranchingRuleRepository,
+)
 from reforma_survey.infrastructure.db.models import BranchingRuleModel
 
 
 class BranchingRuleRepositoryImpl(BranchingRuleRepository):
-
     def __init__(self, db: AsyncSession):
         self.db = db
 
@@ -27,7 +26,7 @@ class BranchingRuleRepositoryImpl(BranchingRuleRepository):
         result = await self.db.execute(
             select(BranchingRuleModel)
             .where(BranchingRuleModel.question_id == question_id)
-            .order_by(BranchingRuleModel.is_default.desc())  # дефолтные правила в конце
+            .order_by(BranchingRuleModel.is_default.desc()) 
         )
         models = result.scalars().all()
         return [self._to_entity(m) for m in models]
@@ -58,7 +57,9 @@ class BranchingRuleRepositoryImpl(BranchingRuleRepository):
         await self.db.flush()
         return self._to_entity(model)
 
-    async def update_answer_value(self, rule_id: UUID, new_answer_value: str) -> BranchingRule:
+    async def update_answer_value(
+        self, rule_id: UUID, new_answer_value: str
+    ) -> BranchingRule:
         model = await self._get_model_or_raise(rule_id)
         condition = model.condition or {}
         condition["answer"] = new_answer_value.strip()
@@ -67,9 +68,7 @@ class BranchingRuleRepositoryImpl(BranchingRuleRepository):
         return self._to_entity(model)
 
     async def update_next_question(
-        self,
-        rule_id: UUID,
-        new_next_question_id: UUID
+        self, rule_id: UUID, new_next_question_id: UUID
     ) -> BranchingRule:
         model = await self._get_model_or_raise(rule_id)
         condition = model.condition or {}
@@ -78,7 +77,9 @@ class BranchingRuleRepositoryImpl(BranchingRuleRepository):
         await self.db.flush()
         return self._to_entity(model)
 
-    async def set_default(self, rule_id: UUID, is_default: bool = True) -> BranchingRule:
+    async def set_default(
+        self, rule_id: UUID, is_default: bool = True
+    ) -> BranchingRule:
         model = await self._get_model_or_raise(rule_id)
         condition = model.condition or {}
         condition["is_default"] = is_default
