@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from uuid import UUID, uuid4
 from typing import List
 from reforma_survey.domain.entities.response import Response
+from reforma_survey.infrastructure.rabbitmq.publisher import EventPublisher
+from reforma_survey.presentation.dependencies.get_event_publisher import get_event_publisher
 from reforma_survey.presentation.schemas.response_schema import (
     ResponseOut,
     ResponseCreate,
@@ -438,6 +440,7 @@ async def submit_response(
     response_id: UUID,
     current_user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
+    event_publisher: EventPublisher = Depends(get_event_publisher)
 ):
     trace_id = getattr(request.state, "trace_id", None)
 
@@ -451,7 +454,7 @@ async def submit_response(
     )
 
     try:
-        use_case = MarkResponseSubmittedUseCase(ResponseRepositoryImpl(db))
+        use_case = MarkResponseSubmittedUseCase(ResponseRepositoryImpl(db), event_publisher)
         updated = await use_case.execute(response_id=response_id)
 
         if updated.user_id != current_user_id:

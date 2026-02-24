@@ -1,18 +1,17 @@
 import json
 import aio_pika
+from reforma_report.infrastructure.config.rabbitmq_config import RESPONSE_SUBMITTED_ROUTING_KEY
 from reforma_report.infrastructure.config.rabbitmq_config import REPORT_EXCHANGE
 from reforma_report.infrastructure.rabbitmq.connection import RabbitMQConnection
-from reforma_report.infrastructure.config.rabbitmq_config import (
-    
-)
 from reforma_common.logger import log_info, log_warning, log_error
+from reforma_report.application.handles.response_submitted import ResponseSubmitted
 
 HANDLERS = {
-    REPORT_GENERATION_ROUTING_KEY: GenerateReport()
+    RESPONSE_SUBMITTED_ROUTING_KEY: ResponseSubmitted()
 }
 
 
-class UserConsumer:
+class ReportConsumer:
     _instance = None
 
     def __new__(cls):
@@ -43,7 +42,7 @@ class UserConsumer:
         for rk in HANDLERS.keys():
             await queue.bind(exchange, routing_key=rk)
 
-        log_info("Start Consuming user events", service="report_service")
+        log_info("Start Consuming report events", service="report_service")
 
         async def callback(message: aio_pika.IncomingMessage):
             async with message.process():
@@ -57,12 +56,12 @@ class UserConsumer:
                         await handler.handle(payload)
                     else:
                         log_warning(
-                            f"[UserConsumer] Unknown event type: {event_type}",
+                            f"[ReportConsumer] Unknown event type: {event_type}",
                             service="report_service",
                         )
                 except Exception as e:
                     log_error(
-                        f"[UserConsumer] Error processing message: {e}",
+                        f"[ReportConsumer] Error processing message: {e}",
                         service="report_service",
                     )
 

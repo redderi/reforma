@@ -6,7 +6,6 @@ from typing import List
 from reforma_survey.presentation.schemas.branching_rule_schema import (
     BranchingRuleAnswerUpdate,
     BranchingRuleCreate,
-    BranchingRuleDefaultUpdate,
     BranchingRuleNextQuestionUpdate,
     BranchingRuleOut,
 )
@@ -601,102 +600,6 @@ async def update_branching_rule_next_question(
         )
         raise HTTPException(status_code=500, detail="Internal server error")
 
-
-@router.patch(
-    "/{survey_id}/questions/{question_id}/branching-rules/{rule_id}/default",
-    response_model=BranchingRuleOut,
-)
-async def set_branching_rule_default(
-    request: Request,
-    survey_id: UUID,
-    question_id: UUID,
-    rule_id: UUID,
-    payload: BranchingRuleDefaultUpdate,
-    current_user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-):
-    trace_id = getattr(request.state, "trace_id", None)
-
-    log_info(
-        "Set branching rule as default attempt",
-        service="survey-service",
-        request=request,
-        trace_id=trace_id,
-        user_id=str(current_user_id),
-        context={
-            "survey_id": str(survey_id),
-            "question_id": str(question_id),
-            "rule_id": str(rule_id),
-            "is_default": payload.is_default,
-        },
-    )
-
-    try:
-        survey_repo = SurveyRepositoryImpl(db)
-        survey = await survey_repo.get_by_id(survey_id)
-        if not survey:
-            log_warning(
-                "Survey not found",
-                service="survey-service",
-                request=request,
-                trace_id=trace_id,
-                user_id=str(current_user_id),
-                context={"survey_id": str(survey_id)},
-            )
-            raise HTTPException(status_code=404, detail="Survey not found")
-
-        if str(survey.owner_id) != str(current_user_id):
-            log_warning(
-                "User does not have permission to update branching rule",
-                service="survey-service",
-                request=request,
-                trace_id=trace_id,
-                user_id=str(current_user_id),
-                context={"survey_id": str(survey_id)},
-            )
-            raise HTTPException(status_code=403, detail="No permission")
-
-        use_case = SetBranchingRuleAsDefaultUseCase(BranchingRuleRepositoryImpl(db))
-        updated = await use_case.execute(rule_id, payload.is_default)
-
-        log_info(
-            "Branching rule default status updated successfully",
-            service="survey-service",
-            request=request,
-            trace_id=trace_id,
-            user_id=str(current_user_id),
-            context={"rule_id": str(rule_id)},
-        )
-
-        return BranchingRuleOut(
-            id=str(updated.id),
-            question_id=str(updated.question_id),
-            answer_value=updated.answer_value,
-            next_question_id=str(updated.next_question_id),
-            is_default=updated.is_default,
-        )
-
-    except ValueError as e:
-        log_warning(
-            "Set branching rule default failed",
-            service="survey-service",
-            request=request,
-            trace_id=trace_id,
-            user_id=str(current_user_id),
-            context={"rule_id": str(rule_id), "error_detail": str(e)},
-        )
-        raise HTTPException(status_code=400, detail=str(e))
-
-    except Exception as e:
-        log_error(
-            "Unexpected error setting branching rule default",
-            service="survey-service",
-            request=request,
-            trace_id=trace_id,
-            user_id=str(current_user_id),
-            context={"rule_id": str(rule_id), "error_detail": str(e)},
-        )
-        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{survey_id}/questions/{question_id}/branching-rules/{rule_id}")

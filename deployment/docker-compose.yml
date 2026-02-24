@@ -1,10 +1,9 @@
-version: '3.9'
-
 networks:
   backend:
     driver: bridge
 
 volumes:
+  report_pgdata:
   survey_pgdata:
   auth_pgdata:
   payment_pgdata:
@@ -20,9 +19,6 @@ volumes:
   volume3_data:
 
 services:
-  # ===============================
-  # MICROSERVICES
-  # ===============================
   auth_service:
     build:
       context: ..
@@ -36,7 +32,6 @@ services:
     depends_on:
       - auth_postgres
       - rabbitmq
-      - logstash
     networks:
       - backend
 
@@ -52,7 +47,6 @@ services:
       - "8001:8000"
     depends_on:
       - rabbitmq
-      - logstash
     networks:
       - backend
 
@@ -69,7 +63,6 @@ services:
     depends_on:
       - survey_postgres
       - rabbitmq
-      - logstash
     networks:
       - backend
 
@@ -86,7 +79,22 @@ services:
     depends_on:
       - payment_postgres
       - rabbitmq
-      - logstash
+    networks:
+      - backend
+
+  report_service:
+    build:
+      context: ..
+      dockerfile: reforma_report/Dockerfile
+    container_name: reforma_report
+    restart: always
+    env_file:
+      - ../reforma_report/.env
+    ports:
+      - "8004:8000"
+    depends_on:
+      - report_postgres
+      - rabbitmq
     networks:
       - backend
 
@@ -135,6 +143,27 @@ services:
       retries: 5
       start_period: 5s
 
+  report_postgres:
+    image: postgres:15
+    container_name: postgres_report_db
+    restart: always
+    environment:
+      POSTGRES_USER: reforma_report_user
+      POSTGRES_PASSWORD: reforma_report_pass
+      POSTGRES_DB: reforma_report_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - report_pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reforma_report_user -d reforma_report_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
   payment_postgres:
     image: postgres:15
     container_name: postgres_payment_db
@@ -144,7 +173,7 @@ services:
       POSTGRES_PASSWORD: reforma_payment_pass
       POSTGRES_DB: reforma_payment_db
     ports:
-      - "5434:5432"
+      - "5435:5432"
     volumes:
       - payment_pgdata:/var/lib/postgresql/data
     networks:
@@ -200,6 +229,21 @@ services:
   # ===============================
   # ELK Stack
   # ===============================
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.9.0
+    container_name: filebeat
+    user: root
+    command: ["--strict.perms=false"]
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+    depends_on:
+      - logstash
+    networks:
+      - backend
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
     container_name: elasticsearch
@@ -235,7 +279,7 @@ services:
     image: docker.elastic.co/logstash/logstash:8.9.0
     container_name: logstash
     ports:
-      - "5000:5000"
+      - "5044:5044"
     volumes:
       - ./logstash/pipeline:/usr/share/logstash/pipeline
     depends_on:
@@ -259,6 +303,8 @@ services:
       - auth_service
       - mail_service
       - survey_service
+      - payment_service
+      - report_service
       - kibana
     restart: unless-stopped
     networks:

@@ -31,7 +31,7 @@ from reforma_survey.infrastructure.repositories.question_repository_impl import 
 from reforma_survey.application.question.get_question_by_id_use_case import (
     GetQuestionByIdUseCase,
 )
-from reforma_survey.application.question.get_question_by_survey_use_case import (
+from reforma_survey.application.question.get_questions_by_survey_use_case import (
     GetQuestionsBySurveyUseCase,
 )
 from reforma_survey.application.question.get_ordered_questions_by_survey_use_case import (
