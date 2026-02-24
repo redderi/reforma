@@ -3,14 +3,14 @@ from reforma_survey.domain.repositories.question_repository import QuestionRepos
 from reforma_survey.infrastructure.db.session import SessionLocal
 
 
-class DeleteQuestionUseCase:
+class MoveQuestionUseCase:
     def __init__(self, repository: QuestionRepository):
         self.repository = repository
 
-    async def execute(self, question_id: UUID, survey_id: UUID) -> None:
+    async def execute(self, question_id: UUID, survey_id: UUID, new_order: int) -> None:
         async with SessionLocal() as db:
             async with db.begin():
                 try:
-                    await self.repository.delete(question_id, survey_id)
+                    await self.repository.move(question_id, survey_id, new_order)
                 except Exception:
                     raise

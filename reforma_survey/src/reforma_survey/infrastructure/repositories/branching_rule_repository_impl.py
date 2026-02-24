@@ -55,6 +55,7 @@ class BranchingRuleRepositoryImpl(BranchingRuleRepository):
         )
         self.db.add(model)
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_answer_value(
@@ -65,6 +66,7 @@ class BranchingRuleRepositoryImpl(BranchingRuleRepository):
         condition["answer"] = new_answer_value.strip()
         model.condition = condition
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_next_question(
@@ -75,6 +77,7 @@ class BranchingRuleRepositoryImpl(BranchingRuleRepository):
         condition["next_question_id"] = str(new_next_question_id)
         model.condition = condition
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def set_default(
@@ -85,10 +88,12 @@ class BranchingRuleRepositoryImpl(BranchingRuleRepository):
         condition["is_default"] = is_default
         model.condition = condition
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def delete(self, rule_id: UUID) -> None:
         stmt = delete(BranchingRuleModel).where(BranchingRuleModel.id == rule_id)
+        await self.db.commit()
         await self.db.execute(stmt)
 
     async def exists(self, rule_id: UUID) -> bool:

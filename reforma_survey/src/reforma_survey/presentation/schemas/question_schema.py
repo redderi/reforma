@@ -11,7 +11,6 @@ class QuestionOut(BaseModel):
     options: List[str] = []
     style: Dict = {}
     order: int = 0
-    next_questions: Dict[str, str] = {}  # answer_value -> next_question_id
 
 
 class QuestionCreate(BaseModel):
@@ -21,7 +20,6 @@ class QuestionCreate(BaseModel):
     )
     options: List[str] | None = None
     style: Dict | None = None
-    order: int = 0
 
 
 class QuestionTextUpdate(BaseModel):

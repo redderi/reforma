@@ -47,17 +47,21 @@ class TemplateRepositoryImpl(TemplateRepository):
             owner_id=template.owner_id,
             name=template.name.strip(),
             description=template.description,
-            style=template.survey_style,
+            style=template.survey_style or {},
+            question_style=template.question_style or {},
+            assets=template.assets or [],
             created_at=datetime.utcnow(),
         )
         self.db.add(model)
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_name(self, template_id: UUID, new_name: str) -> Template:
         model = await self._get_model_or_raise(template_id)
         model.name = new_name.strip()
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_description(
@@ -66,6 +70,7 @@ class TemplateRepositoryImpl(TemplateRepository):
         model = await self._get_model_or_raise(template_id)
         model.description = description
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_survey_style(
@@ -74,43 +79,38 @@ class TemplateRepositoryImpl(TemplateRepository):
         model = await self._get_model_or_raise(template_id)
         model.style = survey_style
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_question_style(
         self, template_id: UUID, question_style: Dict
     ) -> Template:
         model = await self._get_model_or_raise(template_id)
-        current_style = model.style or {}
-        current_style["question"] = question_style
-        model.style = current_style
+        model.question_style = question_style
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def add_asset(self, template_id: UUID, asset_url: str) -> Template:
         model = await self._get_model_or_raise(template_id)
-        current_style = model.style or {}
-        current_assets = current_style.get("assets", [])
-        if asset_url not in current_assets:
-            current_assets.append(asset_url)
-            current_style["assets"] = current_assets
-            model.style = current_style
+        if asset_url not in model.assets:
+            model.assets.append(asset_url)  
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def remove_asset(self, template_id: UUID, asset_url: str) -> Template:
         model = await self._get_model_or_raise(template_id)
-        current_style = model.style or {}
-        current_assets = current_style.get("assets", [])
-        if asset_url in current_assets:
-            current_assets.remove(asset_url)
-            current_style["assets"] = current_assets
-            model.style = current_style
+        if asset_url in model.assets:
+            model.assets.remove(asset_url)  
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def delete(self, template_id: UUID) -> None:
         stmt = delete(TemplateModel).where(TemplateModel.id == template_id)
         await self.db.execute(stmt)
+        await self.db.commit()
 
     async def exists(self, template_id: UUID) -> bool:
         result = await self.db.execute(
@@ -136,15 +136,12 @@ class TemplateRepositoryImpl(TemplateRepository):
         return model
 
     def _to_entity(self, model: TemplateModel) -> Template:
-        style = model.style or {}
-        question_style = style.get("question", {})
-
         return Template(
             id=model.id,
             owner_id=model.owner_id,
             name=model.name,
             description=model.description,
-            survey_style=style,
-            question_style=question_style,
-            assets=style.get("assets", []),
+            survey_style=model.style or {},
+            question_style=model.question_style or {},
+            assets=model.assets or [],
         )

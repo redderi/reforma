@@ -1,7 +1,7 @@
 from typing import Dict, List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, func
+from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload
 from reforma_survey.domain.entities.question import Question
 from reforma_survey.domain.repositories.question_repository import QuestionRepository
@@ -35,6 +35,14 @@ class QuestionRepositoryImpl(QuestionRepository):
 
     async def get_by_survey_ordered(self, survey_id: UUID) -> List[Question]:
         return await self.get_by_survey(survey_id)
+    
+    async def get_next_order(self, survey_id: UUID) -> int:
+        stmt = select(func.max(QuestionModel.order)).where(
+            QuestionModel.survey_id == survey_id
+        )
+        result = await self.db.execute(stmt)
+        max_order = result.scalar()
+        return (max_order or -1) + 1
 
     async def create(self, question: Question) -> Question:
         model = QuestionModel(
@@ -44,45 +52,102 @@ class QuestionRepositoryImpl(QuestionRepository):
             answer_type=question.type,
             options=question.options,
             style=question.style,
-            order=question.order,
+            order=question.order,          
+            branching_rules=[],
         )
         self.db.add(model)
-        await self.db.flush()
+        await self.db.flush()         
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_text(self, question_id: UUID, new_text: str) -> Question:
         model = await self._get_model_or_raise(question_id)
         model.question_text = new_text.strip()
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_type(self, question_id: UUID, new_type: str) -> Question:
         model = await self._get_model_or_raise(question_id)
         model.answer_type = new_type.strip()
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_options(self, question_id: UUID, options: List[str]) -> Question:
         model = await self._get_model_or_raise(question_id)
         model.options = options
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_style(self, question_id: UUID, style: Dict) -> Question:
         model = await self._get_model_or_raise(question_id)
         model.style = style
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def update_order(self, question_id: UUID, new_order: int) -> Question:
         model = await self._get_model_or_raise(question_id)
         model.order = new_order
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
-    async def delete(self, question_id: UUID) -> None:
-        stmt = delete(QuestionModel).where(QuestionModel.id == question_id)
-        await self.db.execute(stmt)
+    async def delete(self, question_id: UUID, survey_id: UUID):
+        result = await self.db.execute(
+            select(QuestionModel)
+            .where(QuestionModel.id == question_id, QuestionModel.survey_id == survey_id)
+        )
+        question = result.scalar_one_or_none()
+        if not question:
+            raise ValueError("Question not found")
+        
+        deleted_order = question.order
+
+        await self.db.delete(question)
+        
+        await self.db.execute(
+            update(QuestionModel)
+            .where(QuestionModel.survey_id == survey_id, QuestionModel.order > deleted_order)
+            .values(order=QuestionModel.order - 1)
+        )
+        
+        await self.db.commit()
+
+    async def move(self, question_id: UUID, survey_id: UUID, new_order: int):
+        result = await self.db.execute(
+            select(QuestionModel)
+            .where(QuestionModel.id == question_id, QuestionModel.survey_id == survey_id)
+        )
+        question = result.scalar_one()
+        old_order = question.order
+        
+        if new_order > old_order:
+            await self.db.execute(
+                update(QuestionModel)
+                .where(
+                    QuestionModel.survey_id == survey_id,
+                    QuestionModel.order > old_order,
+                    QuestionModel.order <= new_order
+                )
+                .values(order=QuestionModel.order - 1)
+            )
+        elif new_order < old_order:
+            await self.db.execute(
+                update(QuestionModel)
+                .where(
+                    QuestionModel.survey_id == survey_id,
+                    QuestionModel.order >= new_order,
+                    QuestionModel.order < old_order
+                )
+                .values(order=QuestionModel.order + 1)
+            )
+        
+        question.order = new_order
+        self.db.add(question)
+        await self.db.commit()
 
     async def exists(self, question_id: UUID) -> bool:
         result = await self.db.execute(
@@ -108,17 +173,6 @@ class QuestionRepositoryImpl(QuestionRepository):
         return model
 
     def _to_entity(self, model: QuestionModel) -> Question:
-        next_questions = {}
-        for rule in model.branching_rules:
-            condition = rule.condition or {}
-            answer = condition.get("answer")
-            next_id = condition.get("next_question_id")
-            if answer and next_id:
-                next_questions[answer] = UUID(next_id)
-
-            if condition.get("is_default"):
-                next_questions["default"] = UUID(next_id)
-
         return Question(
             id=model.id,
             survey_id=model.survey_id,
@@ -127,5 +181,4 @@ class QuestionRepositoryImpl(QuestionRepository):
             options=model.options or [],
             style=model.style or {},
             order=model.order,
-            next_questions=next_questions,
         )

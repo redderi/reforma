@@ -7,13 +7,11 @@ class BranchingRuleOut(BaseModel):
     question_id: str
     answer_value: str
     next_question_id: str
-    is_default: bool = False
 
 
 class BranchingRuleCreate(BaseModel):
     answer_value: str = Field(..., min_length=1, max_length=100)
     next_question_id: UUID
-    is_default: bool = False
 
 
 class BranchingRuleAnswerUpdate(BaseModel):
@@ -23,6 +21,3 @@ class BranchingRuleAnswerUpdate(BaseModel):
 class BranchingRuleNextQuestionUpdate(BaseModel):
     next_question_id: UUID
 
-
-class BranchingRuleDefaultUpdate(BaseModel):
-    is_default: bool = True

@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from uuid import UUID, uuid4
 from typing import List
 
+from reforma_survey.application.question.get_next_order_use_case import GetNextOrderUseCase
+from reforma_survey.application.question.move_question_use_case import MoveQuestionUseCase
 from reforma_survey.application.question.updare_question_order_use_case import UpdateQuestionOrderUseCase
 from reforma_survey.presentation.schemas.question_schema import (
     QuestionCreate,
@@ -129,7 +131,6 @@ async def get_questions_in_survey(
                 options=q.options,
                 style=q.style,
                 order=q.order,
-                next_questions={k: str(v) for k, v in q.next_questions.items()},
             )
             for q in questions
         ]
@@ -239,7 +240,6 @@ async def get_question_in_survey(
             options=question.options,
             style=question.style,
             order=question.order,
-            next_questions={k: str(v) for k, v in question.next_questions.items()},
         )
 
     except HTTPException:
@@ -260,7 +260,7 @@ async def get_question_in_survey(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/{survey_id}/questions", response_model=QuestionOut, status_code=201)
+@router.post("/{survey_id}/create_question", response_model=QuestionOut, status_code=201)
 async def create_question_in_survey(
     request: Request,
     survey_id: UUID,
@@ -278,11 +278,8 @@ async def create_question_in_survey(
         user_id=str(current_user_id),
         context={
             "survey_id": str(survey_id),
-            "text": payload.text[:100] + "..."
-            if len(payload.text) > 100
-            else payload.text,
+            "text": payload.text[:100] + "..." if len(payload.text) > 100 else payload.text,
             "type": payload.type,
-            "order": payload.order,
         },
     )
 
@@ -309,9 +306,10 @@ async def create_question_in_survey(
                 user_id=str(current_user_id),
                 context={"survey_id": str(survey_id)},
             )
-            raise HTTPException(
-                status_code=403, detail="No permission to create question"
-            )
+            raise HTTPException(status_code=403, detail="No permission to create question")
+
+        question_repo = QuestionRepositoryImpl(db)
+        use_case = CreateQuestionUseCase(question_repo)
 
         question = Question(
             id=uuid4(),
@@ -320,12 +318,9 @@ async def create_question_in_survey(
             type=payload.type.strip(),
             options=payload.options or [],
             style=payload.style or {},
-            order=payload.order,
-            next_questions={},
         )
 
-        use_case = CreateQuestionUseCase(QuestionRepositoryImpl(db))
-        created = await use_case.execute(question)
+        created = await use_case.execute(question) 
 
         log_info(
             "Question created successfully",
@@ -343,8 +338,7 @@ async def create_question_in_survey(
             type=created.type,
             options=created.options,
             style=created.style,
-            order=created.order,
-            next_questions={k: str(v) for k, v in created.next_questions.items()},
+            order=created.order,  # уже с корректным order
         )
 
     except ValueError as e:
@@ -455,7 +449,6 @@ async def update_question_text(
             options=updated.options,
             style=updated.style,
             order=updated.order,
-            next_questions={k: str(v) for k, v in updated.next_questions.items()},
         )
 
     except ValueError as e:
@@ -566,7 +559,6 @@ async def update_question_type(
             options=updated.options,
             style=updated.style,
             order=updated.order,
-            next_questions={k: str(v) for k, v in updated.next_questions.items()},
         )
 
     except ValueError as e:
@@ -679,7 +671,6 @@ async def update_question_options(
             options=updated.options,
             style=updated.style,
             order=updated.order,
-            next_questions={k: str(v) for k, v in updated.next_questions.items()},
         )
 
     except ValueError as e:
@@ -790,7 +781,6 @@ async def update_question_style(
             options=updated.options,
             style=updated.style,
             order=updated.order,
-            next_questions={k: str(v) for k, v in updated.next_questions.items()},
         )
 
     except Exception as e:
@@ -890,7 +880,6 @@ async def update_question_order(
             options=updated.options,
             style=updated.style,
             order=updated.order,
-            next_questions={k: str(v) for k, v in updated.next_questions.items()},
         )
 
     except ValueError as e:
@@ -916,7 +905,7 @@ async def update_question_order(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.delete("/{survey_id}/questions/{question_id}")
+@router.delete("/{survey_id}/questions/{question_id}/delete")
 async def delete_question(
     request: Request,
     survey_id: UUID,
@@ -961,7 +950,7 @@ async def delete_question(
             raise HTTPException(status_code=403, detail="No permission")
 
         use_case = DeleteQuestionUseCase(QuestionRepositoryImpl(db))
-        await use_case.execute(question_id)
+        await use_case.execute(question_id, survey_id)
 
         log_info(
             "Question deleted successfully",
@@ -973,6 +962,92 @@ async def delete_question(
         )
 
         return {"detail": "Question deleted"}
+
+    except ValueError as e:
+        log_warning(
+            "Question deletion failed",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"question_id": str(question_id), "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=400, detail=str(e))
+
+    except Exception as e:
+        log_error(
+            "Unexpected error deleting question",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={
+                "survey_id": str(survey_id),
+                "question_id": str(question_id),
+                "error_detail": str(e),
+            },
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
+    
+@router.patch("/{survey_id}/questions/{question_id}/move")
+async def move_question(
+    request: Request,
+    survey_id: UUID,
+    question_id: UUID,
+    payload: dict,  # {"new_order": 2}
+    db: AsyncSession = Depends(get_db),
+    current_user_id = Depends(get_current_user_id)
+):
+    new_order = payload.get("new_order")
+    trace_id = getattr(request.state, "trace_id", None)
+
+    log_info(
+        "Move question attempt",
+        service="survey-service",
+        request=request,
+        trace_id=trace_id,
+        user_id=str(current_user_id),
+        context={"survey_id": str(survey_id), "question_id": str(question_id)},
+    )
+
+    try:
+        survey_repo = SurveyRepositoryImpl(db)
+        survey = await survey_repo.get_by_id(survey_id)
+        if not survey:
+            log_warning(
+                "Survey not found",
+                service="survey-service",
+                request=request,
+                trace_id=trace_id,
+                user_id=str(current_user_id),
+                context={"survey_id": str(survey_id)},
+            )
+            raise HTTPException(status_code=404, detail="Survey not found")
+
+        if str(survey.owner_id) != str(current_user_id):
+            log_warning(
+                "User does not have permission to move question",
+                service="survey-service",
+                request=request,
+                trace_id=trace_id,
+                user_id=str(current_user_id),
+                context={"survey_id": str(survey_id)},
+            )
+            raise HTTPException(status_code=403, detail="No permission")
+
+        use_case = MoveQuestionUseCase(QuestionRepositoryImpl(db))
+        await use_case.execute(question_id, survey_id, new_order)
+
+        log_info(
+            "Question moved successfully",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"question_id": str(question_id)},
+        )
+
+        return {"detail": "Question moved"}
 
     except ValueError as e:
         log_warning(

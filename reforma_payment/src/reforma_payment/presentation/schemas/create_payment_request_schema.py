@@ -4,10 +4,11 @@ from pydantic import BaseModel
 
 
 class CreatePaymentRequest(BaseModel):
-    user_id: UUID
     amount: int
-    currency: str = "RUB"
-    idempotency_key: str | None = None
+    currency: str = "rub"
+    provider_type: str = "stripe"
+    user_id: UUID
+    idempotency_key: str
     description: str | None = None
-    payment_metadata: Dict[str, str] | None = None
-    provider_type: str
+    payment_metadata: dict | None = None
+    return_url: str | None = None          # ← добавь это поле!

@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from reforma_survey.infrastructure.db.base import Base
+from sqlalchemy.ext.mutable import MutableList
 
 
 class UserProfileModel(Base):
@@ -64,7 +65,13 @@ class TemplateModel(Base):
     )
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     style: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    question_style: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    assets: Mapped[list] = mapped_column(MutableList.as_mutable(JSON), default=list)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     owner: Mapped["UserProfileModel"] = relationship(
@@ -73,7 +80,6 @@ class TemplateModel(Base):
     surveys: Mapped[list["SurveyModel"]] = relationship(
         "SurveyModel", back_populates="template"
     )
-
 
 class SurveyModel(Base):
     __tablename__ = "survey"
@@ -141,15 +147,27 @@ class BranchingRuleModel(Base):
     __tablename__ = "branching_rule"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
     )
     question_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("question.id")
+        UUID(as_uuid=True),
+        ForeignKey("question.id"),
+        index=True
     )
-    condition: Mapped[dict] = mapped_column(JSON)
+    
+    condition: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    
+    is_default: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
 
     question: Mapped["QuestionModel"] = relationship(
-        "QuestionModel", back_populates="branching_rules"
+        "QuestionModel",
+        back_populates="branching_rules"
     )
 
 

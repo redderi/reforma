@@ -37,7 +37,7 @@ async def topup_balance(
 
     try:
         resp = httpx.post(
-            "http://reforma-payment:8000/payments/topup/initiate",
+            "http://reforma-payment:8000/payment_service/payments/topup/initiate",
             json={
                 "user_id": str(current_user_id),
                 "amount": topup_data.amount,

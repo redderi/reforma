@@ -19,8 +19,8 @@ class AsyncLogstashHandler(logging.Handler):
             await writer.drain()
             writer.close()
             await writer.wait_closed()
-        except Exception:
-            return False
+        except Exception as e:
+            print("Logstash error: ", e)
 
     def emit(self, record):
         log = self.format(record)

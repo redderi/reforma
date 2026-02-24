@@ -18,6 +18,10 @@ class QuestionRepository(ABC):
         pass
 
     @abstractmethod
+    async def get_next_order(self, survey_id: UUID) -> int:
+        pass
+
+    @abstractmethod
     async def create(self, question: Question) -> Question:
         pass
 
@@ -42,7 +46,11 @@ class QuestionRepository(ABC):
         pass
 
     @abstractmethod
-    async def delete(self, question_id: UUID) -> None:
+    async def delete(self, question_id: UUID, survey_id: UUID) -> None:
+        pass
+
+    @abstractmethod
+    async def move(self, question_id: UUID, survey_id: UUID, new_order: int) -> None:
         pass
 
     @abstractmethod

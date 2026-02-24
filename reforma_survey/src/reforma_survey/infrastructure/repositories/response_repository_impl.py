@@ -1,5 +1,5 @@
 from typing import Any, List, Dict
-from uuid import UUID
+from uuid import UUID, uuid4
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func, distinct, or_
@@ -100,41 +100,47 @@ class ResponseRepositoryImpl(ResponseRepository):
         return result.scalar() is not None
 
     async def create(self, response: Response) -> Response:
+        serialized_answers = {str(k): v for k, v in (response.answers or {}).items()}
+
         model = ResponseModel(
-            id=response.id,
+            id=response.id or uuid4(),
             survey_id=response.survey_id,
             user_id=response.user_id,
             anonymous_id=response.anonymous_id,
             ip_address=response.ip_address,
             fingerprint=response.fingerprint,
-            answers=response.answers,
+            answers=serialized_answers,
             submitted_at=response.submitted_at,
         )
 
         self.db.add(model)
         await self.db.flush()
+        await self.db.commit()  # сохраняем изменения
         return self._to_entity(model)
 
     async def update_answers(
         self, response_id: UUID, new_answers: Dict[UUID, Any]
     ) -> Response:
         model = await self._get_model_or_raise(response_id)
-        model.answers = new_answers
+        model.answers = {str(k): v for k, v in new_answers.items()}
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def mark_submitted(
-        self, response_id: UUID, submitted_at: datetime = None
+        self, response_id: UUID, submitted_at: datetime | None = None
     ) -> Response:
         model = await self._get_model_or_raise(response_id)
         model.submitted_at = submitted_at or datetime.utcnow()
         await self.db.flush()
+        await self.db.commit()
         return self._to_entity(model)
 
     async def delete(self, response_id: UUID) -> None:
         await self.db.execute(
             delete(ResponseModel).where(ResponseModel.id == response_id)
         )
+        await self.db.commit()
 
     async def count_by_survey(self, survey_id: UUID) -> int:
         result = await self.db.execute(

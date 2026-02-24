@@ -23,10 +23,15 @@ router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 async def payment_webhook(
     request: Request,
     provider_type: str,
-    signature: str = Header(None),
+    signature: str = Header(None, alias="Stripe-Signature"),  # ← правильный заголовок для Stripe
     db: AsyncSession = Depends(get_db),
     event_publisher: EventPublisher = Depends(get_event_publisher),
 ):
+    payload = await request.body()
+
+    if provider_type == "stripe":
+        if not signature:
+            raise HTTPException(400, "Missing Stripe-Signature header")
     trace_id = getattr(request.state, "trace_id", None)
     log_info(
         "Received payment webhook",

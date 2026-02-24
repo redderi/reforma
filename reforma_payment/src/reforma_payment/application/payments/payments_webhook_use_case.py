@@ -1,13 +1,11 @@
-from reforma_payment.domain.repositories.payment_repository import PaymentRepository
-from reforma_payment.domain.repositories.payment_provider_repository import (
-    PaymentProviderRepository,
-)
-from reforma_payment.infrastructure.payment_providers.stripe.stripe_client import (
-    StripeClient,
-)
-from reforma_common.logger import log_info, log_error
+from typing import Any, Dict
 from datetime import datetime
+import stripe
 
+from reforma_payment.domain.repositories.payment_repository import PaymentRepository
+from reforma_payment.domain.repositories.payment_provider_repository import PaymentProviderRepository
+from reforma_payment.infrastructure.payment_providers.stripe.stripe_client import StripeClient
+from reforma_common.logger import log_info, log_warning, log_error
 from reforma_payment.infrastructure.rabbitmq.publisher import EventPublisher
 from reforma_payment.infrastructure.config.rabbitmq_config import (
     ADD_BALANCE_ROUTING_KEY,
@@ -26,39 +24,182 @@ class PaymentWebhookUseCase:
         self.provider_repo = provider_repo
         self.event_publisher = event_publisher
 
-    async def execute(self, payload: bytes, signature: str, provider_type: str):
-        provider = await self.provider_repo.get_active_by_type(provider_type)
-        if not provider:
-            raise ValueError(f"No active provider found for type '{provider_type}'")
-        if provider_type == "stripe":
-            client = StripeClient(
-                secret_key=provider.credentials["secret_key"],
-                webhook_secret=provider.credentials["webhook_secret"],
+    async def execute(
+        self,
+        payload: bytes,
+        signature: str,
+        provider_type: str,
+    ) -> Dict[str, str]:
+        """
+        Обрабатывает входящий webhook от платёжного провайдера.
+        На данный момент поддерживается только Stripe.
+        """
+        if provider_type != "stripe":
+            log_warning(
+                f"Unsupported webhook provider: {provider_type}",
+                extra={"provider_type": provider_type}
             )
-        else:
-            raise ValueError(f"Unsupported provider type '{provider_type}'")
+            raise ValueError(f"Unsupported provider type: {provider_type}")
+
+        # Получаем активного провайдера
+        provider = await self.provider_repo.get_active_by_type("stripe")
+        if not provider:
+            log_error("No active Stripe provider found")
+            raise ValueError("No active Stripe provider configured")
+
+        # Создаём клиент с нужными ключами
+        client = StripeClient(
+            secret_key=provider.credentials["secret_key"],
+            webhook_secret=provider.credentials.get("webhook_secret"),
+        )
+
+        # Проверяем подпись и получаем событие
         try:
-            event = client.construct_event(payload, signature)
+            event: stripe.Event = client.construct_event(payload, signature)
+        except stripe.error.SignatureVerificationError as e:
+            log_error(f"Webhook signature verification failed: {e}")
+            raise ValueError(f"Invalid webhook signature: {str(e)}")
         except ValueError as e:
-            raise ValueError(f"Invalid signature: {e}")
-        if provider_type == "stripe" and event.type == "payment_intent.succeeded":
-            intent = event.data.object
-            payment = await self.payment_repo.get_by_external_id(intent.id)
-            if payment:
-                payment.status = "succeeded"
-                payment.updated_at = datetime.utcnow()
-                await self.payment_repo.update(payment)
-                await self.event_publisher.publish_event(
-                    exchange_name=USER_EXCHANGE,
-                    event_type=ADD_BALANCE_ROUTING_KEY,
-                    payload={
-                        "user_id": str(payment.user_id),
-                        "amount": payment.amount,
-                        "currency": payment.currency,
-                        "payment_id": str(payment.id),
-                        "payment_metadata": payment.payment_metadata,
-                    },
-                )
-            else:
-                raise ValueError(f"No payment found for external_id {intent.id}")
+            log_error(f"Invalid webhook payload: {e}")
+            raise ValueError(f"Invalid payload: {str(e)}")
+
+        event_type = event.type
+        data_object = event.data.object
+
+        log_info(
+            f"Processing Stripe webhook event: {event_type}",
+            extra={
+                "event_id": event.id,
+                "event_type": event_type,
+                "object_id": data_object.get("id"),
+            }
+        )
+
+        # ──────────────────────────────────────────────────────
+        # Основные события, которые стоит обрабатывать
+        # ──────────────────────────────────────────────────────
+
+        if event_type == "payment_intent.succeeded":
+            await self._handle_payment_intent_succeeded(data_object)
+
+        elif event_type == "payment_intent.payment_failed":
+            await self._handle_payment_intent_failed(data_object)
+
+        elif event_type == "checkout.session.completed":
+            await self._handle_checkout_session_completed(data_object)
+
+        elif event_type == "checkout.session.expired":
+            log_info("Checkout session expired", extra={"session_id": data_object.id})
+
+        elif event_type == "invoice.payment_succeeded":
+            # для подписок — если в будущем понадобится
+            log_info("Invoice payment succeeded", extra={"invoice_id": data_object.id})
+
+        else:
+            # необрабатываемые события просто логируем
+            log_info(
+                f"Unhandled Stripe event type: {event_type}",
+                extra={"event_id": event.id}
+            )
+
         return {"status": "ok"}
+
+    async def _handle_payment_intent_succeeded(self, intent: stripe.PaymentIntent) -> None:
+        """Обработка успешного Payment Intent"""
+        payment_id = intent.metadata.get("payment_id")
+        if not payment_id:
+            log_warning("PaymentIntent succeeded without payment_id in metadata")
+            return
+
+        payment = await self.payment_repo.get_by_id(payment_id)
+        if not payment:
+            log_warning(f"Payment not found for external_id: {intent.id}")
+            return
+
+        if payment.status == "succeeded":
+            log_info("Payment already succeeded, skipping duplicate event")
+            return
+
+        payment.status = "succeeded"
+        payment.updated_at = datetime.utcnow()
+        payment.provider_payment_data = intent.to_dict()  # если нужно сохранить весь объект
+
+        await self.payment_repo.update(payment)
+
+        # Отправляем событие на пополнение баланса
+        await self.event_publisher.publish_event(
+            exchange_name=USER_EXCHANGE,
+            routing_key=ADD_BALANCE_ROUTING_KEY,
+            payload={
+                "user_id": str(payment.user_id),
+                "amount": payment.amount,
+                "currency": payment.currency,
+                "payment_id": str(payment.id),
+                "external_id": intent.id,
+                "metadata": payment.payment_metadata or {},
+                "event_type": "payment.succeeded",
+            },
+        )
+
+        log_info(
+            "Payment succeeded and balance event published",
+            extra={"payment_id": payment.id, "external_id": intent.id}
+        )
+
+    async def _handle_payment_intent_failed(self, intent: stripe.PaymentIntent) -> None:
+        """Обработка провала платежа"""
+        payment_id = intent.metadata.get("payment_id")
+        if not payment_id:
+            return
+
+        payment = await self.payment_repo.get_by_id(payment_id)
+        if not payment:
+            return
+
+        payment.status = "failed"
+        payment.updated_at = datetime.utcnow()
+        payment.error_message = intent.last_payment_error.message if intent.last_payment_error else None
+
+        await self.payment_repo.update(payment)
+
+        log_warning(
+            "Payment failed",
+            extra={
+                "payment_id": payment.id,
+                "external_id": intent.id,
+                "error": payment.error_message,
+            }
+        )
+
+    async def _handle_checkout_session_completed(self, session: stripe.checkout.Session) -> None:
+        """Обработка завершения Checkout сессии (если используете hosted Checkout)"""
+        payment_id = session.metadata.get("payment_id")
+        if not payment_id:
+            log_warning("Checkout session completed without payment_id")
+            return
+
+        payment = await self.payment_repo.get_by_id(payment_id)
+        if not payment:
+            return
+
+        if session.payment_status == "paid":
+            payment.status = "succeeded"
+            payment.updated_at = datetime.utcnow()
+            await self.payment_repo.update(payment)
+
+            # Публикуем событие пополнения
+            await self.event_publisher.publish_event(
+                exchange_name=USER_EXCHANGE,
+                routing_key=ADD_BALANCE_ROUTING_KEY,
+                payload={
+                    "user_id": str(payment.user_id),
+                    "amount": payment.amount,
+                    "currency": payment.currency,
+                    "payment_id": str(payment.id),
+                    "external_id": session.id,
+                },
+            )
+
+            log_info("Checkout session completed → payment succeeded")
+        else:
+            log_warning(f"Checkout session completed with status: {session.payment_status}")
