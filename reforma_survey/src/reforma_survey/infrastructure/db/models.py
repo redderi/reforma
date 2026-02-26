@@ -255,3 +255,15 @@ class ReportModel(Base):
         Index("ix_reports_owner_status", "owner_id", "status"),
         Index("ix_reports_requested_at", desc("requested_at")),
     )
+
+class FileModel(Base):
+    __tablename__ = "file"
+
+    object_key: Mapped[str] = mapped_column(String(255), primary_key=True)
+    type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    template_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    survey_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    question_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    report_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    file_format: Mapped[str | None] = mapped_column(String(50), nullable=True)

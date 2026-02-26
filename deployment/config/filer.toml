@@ -19,6 +19,6 @@ createTable = """
 hostname = "seaweed_postgres"
 port = 5432
 username = "seaweed"
-password = "strong_seaweed_pass"
+password = "seaweedpass"
 database = "seaweedfs"
 sslmode = "disable"

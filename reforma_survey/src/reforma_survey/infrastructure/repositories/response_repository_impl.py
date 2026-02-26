@@ -16,7 +16,7 @@ class ResponseRepositoryImpl(ResponseRepository):
         model = await self.db.get(ResponseModel, response_id)
         return self._to_entity(model) if model else None
 
-    async def get_by_survey(
+    async def get_by_survey_with_limit(
         self,
         survey_id: UUID,
         limit: int = 100,
@@ -37,6 +37,58 @@ class ResponseRepositoryImpl(ResponseRepository):
         result = await self.db.execute(stmt)
         models = result.scalars().all()
         return [self._to_entity(m) for m in models]
+    
+
+    async def get_by_survey(
+        self,
+        survey_id: UUID,
+        include_anonymous: bool = True,
+    ) -> List[Response]:
+        stmt = (
+            select(ResponseModel)
+            .where(ResponseModel.survey_id == survey_id)
+            .order_by(ResponseModel.submitted_at.desc())
+        )
+
+        if not include_anonymous:
+            stmt = stmt.where(ResponseModel.user_id.isnot(None))
+
+        result = await self.db.execute(stmt)
+        models = result.scalars().all()
+        return [self._to_entity(m) for m in models]
+    
+    async def get_answers_for_question(
+        self,
+        survey_id: UUID,
+        question_id: UUID,
+        include_anonymous: bool = True,
+    ) -> List[str]:
+
+        qid_str = str(question_id)
+
+        # Основной запрос: получаем только answers, где есть ключ question_id
+        stmt = (
+            select(ResponseModel.answers)
+            .where(ResponseModel.survey_id == survey_id)
+            # Только те ответы, где есть ответ на этот вопрос
+            .where(func.jsonb_typeof(ResponseModel.answers) == 'object')
+            .where(ResponseModel.answers.has_key(qid_str))
+        )
+
+        if not include_anonymous:
+            stmt = stmt.where(ResponseModel.user_id.is_not(None))
+
+        result = await self.db.execute(stmt)
+        answers_rows = result.scalars().all()
+
+        texts: List[str] = []
+        for answers_dict in answers_rows:
+            answer = answers_dict.get(qid_str)
+            if isinstance(answer, str) and answer.strip():
+                texts.append(answer.strip())
+
+        return texts
+    
 
     async def get_by_user_and_survey(
         self,

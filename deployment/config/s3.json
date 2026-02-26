@@ -4,50 +4,38 @@
       "name": "admin",
       "credentials": [
         {
-          "accessKey": "BESTACCESSKEY",
-          "secretKey": "WriterSecretKeyChangeInProduction12345678"
+          "accessKey": "ADMINACCESSKEY",
+          "secretKey": "AdminSuperSecretKey123456789"
         }
       ],
-      "actions": [
-        "Admin",
-        "Read",
-        "Write",
-        "List",
-        "Tagging"
-      ]
-    },
-    {
-      "name": "app-readonly",
-      "credentials": [
-        {
-          "accessKey": "BESTACCESSKEY",
-          "secretKey": "WriterSecretKeyChangeInProduction12345678"
-        }
-      ],
-      "actions": [
-        "Read",
-        "List"
-      ]
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"],
+      "resources": ["buckets/reforma-media/*"] 
     },
     {
       "name": "app-writer",
       "credentials": [
         {
-          "accessKey": "BESTACCESSKEY",
-          "secretKey": "WriterSecretKeyChangeInProduction12345678"
+          "accessKey": "WRITEACCESSKEY",
+          "secretKey": "WriterSecretKey123456789"
         }
       ],
-      "actions": [
-        "Read",
-        "Write",
-        "List"
-      ]
+      "actions": ["Read", "Write", "List"],
+      "resources": ["buckets/reforma-media/*"]   
+    },
+    {
+      "name": "app-readonly",
+      "credentials": [
+        {
+          "accessKey": "READACCESSKEY",
+          "secretKey": "ReadOnlySecretKey123456789"
+        }
+      ],
+      "actions": ["Read", "List"],
+      "resources": ["buckets/reforma-media/*"]
     },
     {
       "name": "anonymous",
-      "actions": [
-        "Read:public-*"
-      ]
+      "actions": ["Read:public-*"]
     }
   ]
 }

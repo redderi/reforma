@@ -19,6 +19,10 @@ volumes:
   volume3_data:
 
 services:
+
+  # ===============================
+  # MICROSERVICE
+  # ===============================
   auth_service:
     build:
       context: ..
@@ -187,12 +191,13 @@ services:
 
   seaweed_postgres:
     image: postgres:15
-    container_name: seaweed_postgres
-    restart: always
+    container_name: postgres_seaweed_db
     environment:
-      POSTGRES_USER: seaweed
-      POSTGRES_PASSWORD: strong_seaweed_pass
       POSTGRES_DB: seaweedfs
+      POSTGRES_USER: seaweed
+      POSTGRES_PASSWORD: seaweedpass
+    ports:
+      - "5436:5432"
     volumes:
       - seaweed_pgdata:/var/lib/postgresql/data
     networks:
@@ -313,6 +318,8 @@ services:
   # ===============================
   # SEAWEEDFS
   # ===============================
+  # ================= MASTER CLUSTER =================
+
   master1:
     image: chrislusf/seaweedfs:3.68
     command: >
@@ -324,12 +331,10 @@ services:
       -defaultReplication=010
     volumes:
       - master1_data:/data
+    ports:
+      - "9333:9333"
     networks:
       - backend
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9333/cluster/status"]
-      interval: 10s
-      retries: 5
 
   master2:
     image: chrislusf/seaweedfs:3.68
@@ -344,10 +349,6 @@ services:
       - master2_data:/data
     networks:
       - backend
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9333/cluster/status"]
-      interval: 10s
-      retries: 5
 
   master3:
     image: chrislusf/seaweedfs:3.68
@@ -362,10 +363,8 @@ services:
       - master3_data:/data
     networks:
       - backend
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9333/cluster/status"]
-      interval: 10s
-      retries: 5
+
+  # ================= VOLUME SERVERS =================
 
   volume1:
     image: chrislusf/seaweedfs:3.68
@@ -406,7 +405,9 @@ services:
     networks:
       - backend
 
-  seaweed_filer:
+  # ================= FILER =================
+
+  filer:
     image: chrislusf/seaweedfs:3.68
     command: >
       filer
@@ -416,59 +417,46 @@ services:
     depends_on:
       - master1
       - seaweed_postgres
+    ports:
+      - "8888:8888"
     networks:
       - backend
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8888/status"]
-      interval: 10s
-      retries: 5
 
-  seaweed_s3:
-    image: chrislusf/seaweedfs:3.68
+  # ================= S3 GATEWAY =================
+
+  s3:
+    image: chrislusf/seaweedfs:latest
     command: >
       s3
-      -filer=seaweed_filer:8888
+      -filer=filer:8888
       -config=/etc/seaweedfs/s3.json
     volumes:
       - ./config/s3.json:/etc/seaweedfs/s3.json:ro
+    ports:
+      - "8333:8333"
     depends_on:
-      - seaweed_filer
+      - filer
     networks:
       - backend
 
-  # nginx_s3:
-  #   image: nginx:stable-alpine
-  #   container_name: nginx_s3
-  #   volumes:
-  #     - ./nginx-s3.conf:/etc/nginx/conf.d/default.conf:ro
-  #   ports:
-  #     - "9000:9000"
-  #   depends_on:
-  #     - seaweed_s3
-  #   networks:
-  #     - backend
-
-  # ===============================
-  # MONITORING
-  # ===============================
-  prometheus:
-    image: prom/prometheus:latest
+  s3-init:
+    image: python:3.12-slim
+    depends_on:
+      - s3
     networks:
       - backend
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:latest
-    networks:
-      - backend
-    ports:
-      - "3000:3000"
+    command: >
+      sh -c "
+        pip install --no-cache-dir awscli &&
+        echo 'Ждём S3...' &&
+        for i in {1..30}; do
+          curl -s -f http://s3:8333 >/dev/null && break;
+          sleep 4;
+        done &&
+        aws --endpoint-url http://s3:8333 s3 mb s3://reforma-media ||
+        echo 'Бакет уже существует или ошибка, продолжаем...';
+      "
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana-data:/var/lib/grafana
-    restart: unless-stopped
+      - AWS_ACCESS_KEY_ID=ADMINACCESSKEY
+      - AWS_SECRET_ACCESS_KEY=AdminSuperSecretKey123456789
+      - AWS_DEFAULT_REGION=us-east-1

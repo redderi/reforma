@@ -11,13 +11,30 @@ class ResponseRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_survey(
+    async def get_by_survey_with_limit(
         self,
         survey_id: UUID,
         limit: int = 100,
         offset: int = 0,
         include_anonymous: bool = True,
     ) -> List[Response]:
+        pass
+
+    @abstractmethod
+    async def get_by_survey(
+        self,
+        survey_id: UUID,
+        include_anonymous: bool = True,
+    ) -> List[Response]:
+        pass
+
+    @abstractmethod
+    async def get_answers_for_question(
+        self,
+        survey_id: UUID,
+        question_id: UUID,
+        include_anonymous: bool = True,
+    ) -> List[str]:
         pass
 
     @abstractmethod

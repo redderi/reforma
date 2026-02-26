@@ -9,6 +9,7 @@ from reforma_survey.presentation.api.balance import router as balance_router
 from reforma_survey.presentation.api.branching_rule import router as branching_rule_router
 from reforma_survey.presentation.api.report import router as report_router
 from reforma_survey.presentation.api.template import router as template_router
+from reforma_survey.presentation.api.storage import router as storage_router
 from reforma_survey.presentation.api.internal.response import router as internal_response_router
 from reforma_survey.presentation.api.internal.question import router as internal_question_router
 
@@ -170,5 +171,6 @@ app.include_router(balance_router)
 app.include_router(branching_rule_router)
 app.include_router(report_router)
 app.include_router(template_router)
+app.include_router(storage_router)
 app.include_router(internal_response_router)
 app.include_router(internal_question_router)

@@ -1,6 +1,7 @@
 import json
 import aio_pika
-from reforma_survey.infrastructure.config.rabbitmq_config import ADD_BALANCE_ROUTING_KEY
+from reforma_survey.application.handlers.sentiment_request_handler import SentimentRequestHandler
+from reforma_survey.infrastructure.config.rabbitmq_config import ADD_BALANCE_ROUTING_KEY, SENTIMENT_REQUEST_ROUTING_KEY
 from reforma_survey.infrastructure.rabbitmq.connection import RabbitMQConnection
 from reforma_survey.infrastructure.config.rabbitmq_config import (
     USER_EXCHANGE,
@@ -30,6 +31,8 @@ HANDLERS = {
     USER_CHANGE_USERNAME_ROUTING_KEY: ChangeUserProfileUsernameHandler(),
     USER_CHANGE_EMAIL_ROUTING_KEY: ChangeUserProfileEmailHandler(),
     ADD_BALANCE_ROUTING_KEY: AddBalanceHandler(),
+
+    SENTIMENT_REQUEST_ROUTING_KEY: SentimentRequestHandler(),
 }
 
 

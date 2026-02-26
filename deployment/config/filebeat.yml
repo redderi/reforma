@@ -5,7 +5,7 @@ filebeat.inputs:
   - type: container
     paths:
       - /var/lib/docker/containers/*/*.log
-    json.message_key: message   #
+    json.message_key: message   
     json.keys_under_root: true
     json.add_error_key: true
     processors:
@@ -14,14 +14,6 @@ filebeat.inputs:
 output.logstash:
   hosts: ["logstash:5044"]
   ssl.enabled: false
-
-# ==============================
-# Optional: Local testing
-# ==============================
-# output.console:
-#   enabled: true
-#   codec.json:
-#     pretty: true
 
 
 logging.level: info

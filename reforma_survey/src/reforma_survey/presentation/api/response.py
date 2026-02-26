@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from uuid import UUID, uuid4
 from typing import List
+from reforma_survey.application.handlers.sentiment_request_handler import GetResponsesByQuestionUseCase
 from reforma_survey.domain.entities.response import Response
 from reforma_survey.infrastructure.rabbitmq.publisher import EventPublisher
 from reforma_survey.presentation.dependencies.get_event_publisher import get_event_publisher
@@ -145,6 +146,49 @@ async def get_responses_in_survey(
             trace_id=trace_id,
             user_id=str(current_user_id),
             context={"survey_id": str(survey_id), "error_detail": str(e)},
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
+    
+
+@router.get("/{survey_id}/responses/question/{question_id}", response_model=List[ResponseOut])
+async def get_responses_for_question(
+    request: Request,
+    survey_id: UUID,
+    question_id: UUID,
+    limit: int = 100,
+    offset: int = 0,
+    include_anonymous: bool = True,
+    current_user_id: UUID = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    trace_id = getattr(request.state, "trace_id", None)
+    try:
+        survey_repo = SurveyRepositoryImpl(db)
+        survey = await survey_repo.get_by_id(survey_id)
+        if not survey or str(survey.owner_id) != str(current_user_id):
+            raise HTTPException(403, detail="No access to survey responses")
+
+        use_case = GetResponsesByQuestionUseCase(ResponseRepositoryImpl(db))
+        responses = await use_case.execute(
+            survey_id=survey_id,
+            question_id=question_id,
+            limit=limit,
+            offset=offset,
+            include_anonymous=include_anonymous
+        )
+
+        return [to_response_out(r) for r in responses]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(
+            "Unexpected error retrieving responses for question",
+            service="survey-service",
+            request=request,
+            trace_id=trace_id,
+            user_id=str(current_user_id),
+            context={"survey_id": str(survey_id), "question_id": str(question_id), "error_detail": str(e)},
         )
         raise HTTPException(status_code=500, detail="Internal server error")
 
